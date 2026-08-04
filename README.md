@@ -41,12 +41,14 @@ single-instance redirection.
 ## Layout
 
 ```
+MDViewer.sln        both projects
 MDViewer/           the MAUI Blazor Hybrid app
 MDViewer.Harness/   test harness — compiles the app's service files directly
 ```
 
-There is no solution file; build each project by its folder. Paths in the rest of
-this README are relative to the repo root unless a `cd` says otherwise.
+Paths in the rest of this README are relative to the repo root unless a `cd` says
+otherwise. Build commands name the project folder rather than the solution,
+because publishing the MSIX has to target the app project on its own.
 
 ## Build
 
