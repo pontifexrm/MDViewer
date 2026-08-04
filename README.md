@@ -57,6 +57,12 @@ dotnet build MDViewer -c Debug            # packaged (MSIX) — needs Developer 
 dotnet build MDViewer -c Debug -p:WindowsPackageType=None   # unpackaged; will NOT run, see below
 ```
 
+F5 in Visual Studio needs the `MsixPackage` profile in
+`MDViewer/Properties/launchSettings.json`. The template ships `Project` instead,
+which is the unpackaged launch path and fails the build outright:
+*"does not contain a profile with commandName 'MsixPackage'"*. Because this app is
+packaged, `MsixPackage` is the only profile that can work — see below.
+
 Unpackaged builds crash on launch with
 `Cannot locate resource from 'ms-appx:///Microsoft.UI.Xaml/Themes/themeresources.xaml'`
 because an unpackaged app has no package identity. Always run packaged.
