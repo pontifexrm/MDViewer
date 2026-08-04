@@ -38,6 +38,9 @@ MDViewer.Harness/sample.doc
 MDViewer.Harness/sample.epub
 MDViewer.Harness/sample.pdf
 
+## Test harness scratch output
+MDViewer.Harness/out/
+
 ## Claude Code local settings
 .claude/settings.local.json
 

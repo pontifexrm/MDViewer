@@ -143,9 +143,20 @@ using (var zip = new ZipArchive(new MemoryStream(withImage), ZipArchiveMode.Read
 Console.WriteLine();
 Console.WriteLine("== ExportPaths ==");
 
-var beside = ExportPaths.For(samplePath, "ignored", ".pdf");
+// Resolve "beside the source" against a directory of our own rather than the
+// folder sample.md lives in. Exporting sample.md from the app leaves a
+// sample.pdf next to it, and ExportPaths would then correctly return
+// "sample (2).pdf" — failing this check for a reason that has nothing to do
+// with the code under test.
+var besideDir = Path.Combine(outDir, "beside");
+if (Directory.Exists(besideDir)) Directory.Delete(besideDir, recursive: true);
+Directory.CreateDirectory(besideDir);
+var besideSrc = Path.Combine(besideDir, "sample.md");
+File.Copy(samplePath, besideSrc, overwrite: true);
+
+var beside = ExportPaths.For(besideSrc, "ignored", ".pdf");
 Check("export lands beside the source file",
-    Path.GetDirectoryName(beside) == Path.GetDirectoryName(Path.GetFullPath(samplePath)),
+    Path.GetDirectoryName(beside) == Path.GetDirectoryName(Path.GetFullPath(besideSrc)),
     beside);
 Check("export reuses the source base name", Path.GetFileName(beside) == "sample.pdf", Path.GetFileName(beside));
 
