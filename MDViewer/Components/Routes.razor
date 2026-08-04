@@ -1,6 +1,9 @@
 ﻿<Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        @* No FocusOnNavigate: it focused the first h1 — the document's own title — on
+           load, which Chromium then drew a focus ring around. The component exists to
+           announce the new heading to screen readers after an SPA route change, and
+           this app has one route and never navigates. *@
     </Found>
 </Router>
