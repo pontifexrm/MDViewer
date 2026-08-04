@@ -52,12 +52,19 @@ because publishing the MSIX has to target the app project on its own.
 
 ## Build
 
+`global.json` pins the SDK to the GA 10.0.1xx band with `allowPrerelease: false`.
+Without it `dotnet` picks the highest installed SDK, which on this machine is a
+10.0.4xx *preview* — every build then logs `NETSDK1057`, and release artifacts
+would come off a preview toolchain. The `maui-windows` workload is present in both
+bands, so the pin costs nothing.
+
 ```bash
 dotnet build MDViewer -c Debug            # packaged (MSIX) — needs Developer Mode to run
 dotnet build MDViewer -c Debug -p:WindowsPackageType=None   # unpackaged; will NOT run, see below
 ```
 
-Debug builds are versioned `1.0.0.9999` by a config-conditioned `ApplicationVersion`
+Debug builds are versioned `<display>.9999` — currently `1.0.4.9999` — by a
+config-conditioned `ApplicationVersion`
 so an F5 deploy sorts *above* the installed release and Visual Studio stops
 prompting to uninstall it on every run. Both configurations still share one package
 identity, so they cannot be installed side by side — a Debug deploy replaces the
@@ -109,9 +116,14 @@ dotnet publish MDViewer -c Release \
 
 Output: `MDViewer/bin/Release/net10.0-windows10.0.19041.0/win-x64/AppPackages/MDViewer_<ver>_Test/`
 
-Bump the version for each release via `ApplicationVersion` in `MDViewer/MDViewer.csproj`
-(Windows refuses to install a package over an equal or lower version). `1.0` +
-`ApplicationVersion` of `2` gives package version `1.0.0.2`.
+Bump the version for each release via `ApplicationDisplayVersion` in
+`MDViewer/MDViewer.csproj` — the third digit (Windows refuses to install a package
+over an equal or lower version). `1.0.4` + `ApplicationVersion` of `0` gives package
+version `1.0.4.0`.
+
+The counter is in the *display* version, not `ApplicationVersion`, because the
+Microsoft Store reserves the fourth part of the version and requires it to be `0`
+on submission. Keep `ApplicationVersion` at `0` for Release.
 
 **Bumping it is not enough on its own.** The manifest generation step is incremental
 on the timestamp of `Platforms/Windows/Package.appxmanifest`, not on the version
@@ -130,9 +142,9 @@ Then publish, and confirm the version in the `.msix` filename before installing.
 From an **elevated** PowerShell — trusting the certificate needs admin:
 
 ```powershell
-cd "MDViewer\bin\Release\net10.0-windows10.0.19041.0\win-x64\AppPackages\MDViewer_1.0.0.1_Test"
-Import-Certificate -FilePath .\MDViewer_1.0.0.1_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
-Add-AppxPackage .\MDViewer_1.0.0.1_x64.msix
+cd "MDViewer\bin\Release\net10.0-windows10.0.19041.0\win-x64\AppPackages\MDViewer_1.0.4.0_Test"
+Import-Certificate -FilePath .\MDViewer_1.0.4.0_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Add-AppxPackage .\MDViewer_1.0.4.0_x64.msix
 ```
 
 The generated `Install.ps1` in that folder does both and self-elevates.

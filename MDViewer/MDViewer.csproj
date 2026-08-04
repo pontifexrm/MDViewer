@@ -20,8 +20,12 @@
         <ApplicationId>nz.pontifex.mdviewer</ApplicationId>
 
         <!-- Versions -->
-        <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
-        <ApplicationVersion>4</ApplicationVersion>
+        <!-- Package version is ApplicationDisplayVersion with ApplicationVersion as the
+             fourth part: 1.0.4 + 0 -> 1.0.4.0. The Microsoft Store reserves that fourth
+             part and requires it to be 0 on submission, so the release counter lives in
+             ApplicationDisplayVersion. Bump the third digit for each release. -->
+        <ApplicationDisplayVersion>1.0.4</ApplicationDisplayVersion>
+        <ApplicationVersion>0</ApplicationVersion>
 
         <!-- Debug F5 deploys share this package identity with the installed release,
              so a Debug build at or below the release version makes Visual Studio
