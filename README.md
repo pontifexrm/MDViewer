@@ -57,6 +57,14 @@ dotnet build MDViewer -c Debug            # packaged (MSIX) — needs Developer 
 dotnet build MDViewer -c Debug -p:WindowsPackageType=None   # unpackaged; will NOT run, see below
 ```
 
+Debug builds are versioned `1.0.0.9999` by a config-conditioned `ApplicationVersion`
+so an F5 deploy sorts *above* the installed release and Visual Studio stops
+prompting to uninstall it on every run. Both configurations still share one package
+identity, so they cannot be installed side by side — a Debug deploy replaces the
+release, and reinstalling the release afterwards is a downgrade that needs
+`Remove-AppxPackage` first. Genuine side-by-side would mean giving Debug its own
+`ApplicationId`.
+
 F5 in Visual Studio needs the `MsixPackage` profile in
 `MDViewer/Properties/launchSettings.json`. The template ships `Project` instead,
 which is the unpackaged launch path and fails the build outright:

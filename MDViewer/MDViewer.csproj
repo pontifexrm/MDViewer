@@ -23,6 +23,16 @@
         <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
         <ApplicationVersion>2</ApplicationVersion>
 
+        <!-- Debug F5 deploys share this package identity with the installed release,
+             so a Debug build at or below the release version makes Visual Studio
+             prompt to uninstall the release on every run. 9999 keeps Debug sorting
+             above any real release (the revision field maxes out at 65535), so F5
+             is a silent upgrade. It does NOT let the two coexist — same identity,
+             so a Debug deploy still replaces the installed release, and installing
+             a release afterwards is a downgrade: remove the package first, as the
+             Install section of the README says. -->
+        <ApplicationVersion Condition="'$(Configuration)' == 'Debug'">9999</ApplicationVersion>
+
         <!-- Packaged (MSIX). The .md file association in Package.appxmanifest is only
              honoured for a packaged app, so WindowsPackageType is deliberately NOT set
              to None here (unset = packaged).
