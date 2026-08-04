@@ -38,11 +38,21 @@ WebView with .NET interop is not a risk worth taking for the formatting.
 Each `.md` opens its own window (the Notepad/Word model). There is no
 single-instance redirection.
 
+## Layout
+
+```
+MDViewer/           the MAUI Blazor Hybrid app
+MDViewer.Harness/   test harness — compiles the app's service files directly
+```
+
+There is no solution file; build each project by its folder. Paths in the rest of
+this README are relative to the repo root unless a `cd` says otherwise.
+
 ## Build
 
 ```bash
-dotnet build -c Debug            # packaged (MSIX) — needs Developer Mode to run
-dotnet build -c Debug -p:WindowsPackageType=None   # unpackaged; will NOT run, see below
+dotnet build MDViewer -c Debug            # packaged (MSIX) — needs Developer Mode to run
+dotnet build MDViewer -c Debug -p:WindowsPackageType=None   # unpackaged; will NOT run, see below
 ```
 
 Unpackaged builds crash on launch with
@@ -52,7 +62,7 @@ because an unpackaged app has no package identity. Always run packaged.
 To run a Debug build without any certificate (requires Developer Mode on):
 
 ```powershell
-Add-AppxPackage -Register "bin\Debug\net10.0-windows10.0.19041.0\win-x64\AppxManifest.xml"
+Add-AppxPackage -Register "MDViewer\bin\Debug\net10.0-windows10.0.19041.0\win-x64\AppxManifest.xml"
 Start-Process explorer.exe "shell:AppsFolder\$((Get-AppxPackage nz.pontifex.mdviewer).PackageFamilyName)!App"
 ```
 
@@ -75,15 +85,15 @@ New-SelfSignedCertificate -Type Custom -Subject 'CN=Pontifex' `
 Then publish:
 
 ```bash
-dotnet publish -c Release \
+dotnet publish MDViewer -c Release \
   -p:GenerateAppxPackageOnBuild=true \
   -p:AppxPackageSigningEnabled=true \
   -p:PackageCertificateThumbprint=<thumbprint>
 ```
 
-Output: `bin/Release/net10.0-windows10.0.19041.0/win-x64/AppPackages/MDViewer_<ver>_Test/`
+Output: `MDViewer/bin/Release/net10.0-windows10.0.19041.0/win-x64/AppPackages/MDViewer_<ver>_Test/`
 
-Bump the version for each release via `ApplicationVersion` in `MDViewer.csproj`
+Bump the version for each release via `ApplicationVersion` in `MDViewer/MDViewer.csproj`
 (Windows refuses to install a package over an equal or lower version).
 
 ## Install
@@ -91,7 +101,7 @@ Bump the version for each release via `ApplicationVersion` in `MDViewer.csproj`
 From an **elevated** PowerShell — trusting the certificate needs admin:
 
 ```powershell
-cd "bin\Release\net10.0-windows10.0.19041.0\win-x64\AppPackages\MDViewer_1.0.0.1_Test"
+cd "MDViewer\bin\Release\net10.0-windows10.0.19041.0\win-x64\AppPackages\MDViewer_1.0.0.1_Test"
 Import-Certificate -FilePath .\MDViewer_1.0.0.1_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 Add-AppxPackage .\MDViewer_1.0.0.1_x64.msix
 ```
@@ -119,16 +129,19 @@ workaround the app shows *"can't reach this page"* / `ERR_ADDRESS_UNREACHABLE`,
 because BlazorWebView has no `index.html` to serve. Confirmed against a pristine
 `dotnet new maui-blazor` app, so it is the workload, not this project.
 
-`MDViewer.csproj` carries two targets that work around it —
+`MDViewer/MDViewer.csproj` carries two targets that work around it —
 `CopyMauiAssetsToOutput` (build) and `CopyMauiAssetsToPublish` (MSIX payload).
 Delete both once the workload is fixed upstream.
 
 ## Tests
 
-`../MDViewer.Harness` compiles the real service files (not copies) and runs 43
-checks over markdown rendering, lossless save round-trips, ePub structure, the
-Word wrapper and export path selection.
+`MDViewer.Harness` compiles the real service files (not copies, via relative
+`Compile Include` into `../MDViewer/Services`) and runs 43 checks over markdown
+rendering, lossless save round-trips, ePub structure, the Word wrapper and export
+path selection.
 
 ```bash
-cd ../MDViewer.Harness && dotnet run -- sample.md
+cd MDViewer.Harness && dotnet run -- sample.md
 ```
+
+It writes its exports beside `sample.md`; those outputs are ignored by git.
