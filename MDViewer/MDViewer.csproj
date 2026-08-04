@@ -21,7 +21,7 @@
 
         <!-- Versions -->
         <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
-        <ApplicationVersion>1</ApplicationVersion>
+        <ApplicationVersion>2</ApplicationVersion>
 
         <!-- Packaged (MSIX). The .md file association in Package.appxmanifest is only
              honoured for a packaged app, so WindowsPackageType is deliberately NOT set

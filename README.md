@@ -102,7 +102,20 @@ dotnet publish MDViewer -c Release \
 Output: `MDViewer/bin/Release/net10.0-windows10.0.19041.0/win-x64/AppPackages/MDViewer_<ver>_Test/`
 
 Bump the version for each release via `ApplicationVersion` in `MDViewer/MDViewer.csproj`
-(Windows refuses to install a package over an equal or lower version).
+(Windows refuses to install a package over an equal or lower version). `1.0` +
+`ApplicationVersion` of `2` gives package version `1.0.0.2`.
+
+**Bumping it is not enough on its own.** The manifest generation step is incremental
+on the timestamp of `Platforms/Windows/Package.appxmanifest`, not on the version
+properties, so it silently reuses its cached output and you get a package at the
+*old* version — with no warning, since the build succeeds. Delete the intermediate
+first:
+
+```bash
+rm MDViewer/obj/Release/net10.0-windows10.0.19041.0/win-x64/resizetizer/m/Package.appxmanifest
+```
+
+Then publish, and confirm the version in the `.msix` filename before installing.
 
 ## Install
 
