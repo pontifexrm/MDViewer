@@ -1,0 +1,320 @@
+@page "/"
+@using Microsoft.AspNetCore.Components
+@inject IDocumentPrinter Printer
+@inject IFileDialogs Dialogs
+
+<div class="app-shell @(_editing ? "mode-edit" : "mode-read")">
+
+    @* ── Toolbar (never printed) ─────────────────────────────────────────── *@
+    <div class="toolbar no-print">
+        <button class="tb" @onclick="OpenAsync" title="Open a markdown file (Ctrl+O)">
+            <span class="ic">&#128193;</span>Open
+        </button>
+
+        <div class="doc-name" title="@(_file.Path.Length > 0 ? _file.Path : "Not saved yet")">
+            @DisplayName
+            @if (_dirty)
+            {
+                <span class="dirty" title="Unsaved changes">&#9679;</span>
+            }
+        </div>
+
+        <div class="spacer"></div>
+
+        <button class="tb @(_editing ? "on" : "")" @onclick="ToggleEdit"
+                title="@(_editing ? "Back to reading view" : "Edit the markdown source")">
+            <span class="ic">@(_editing ? "\U0001F441" : "✎")</span>@(_editing ? "Read" : "Edit")
+        </button>
+
+        @if (_editing)
+        {
+            <button class="tb" @onclick="SaveAsync" disabled="@(!_dirty || _file.Path.Length == 0)"
+                    title="Save back to the original file (Ctrl+S)">
+                <span class="ic">&#128190;</span>Save
+            </button>
+            <button class="tb" @onclick="SaveAsMarkdownAsync" title="Save to a new .md file">
+                Save As…
+            </button>
+        }
+
+        <span class="sep"></span>
+
+        <button class="tb" @onclick="PrintAsync" disabled="@(!_hasDocument)" title="Print preview (also offers Save as PDF)">
+            <span class="ic">&#128424;</span>Print
+        </button>
+        <button class="tb" @onclick="ExportPdfAsync" disabled="@(!_hasDocument)" title="Write a PDF next to the source file">
+            PDF
+        </button>
+        <button class="tb" @onclick="ExportWordAsync" disabled="@(!_hasDocument)" title="Write a Word document next to the source file">
+            Word
+        </button>
+        <button class="tb" @onclick="ExportEpubAsync" disabled="@(!_hasDocument)" title="Write an ePub next to the source file">
+            ePub
+        </button>
+    </div>
+
+    @* ── Status line ─────────────────────────────────────────────────────── *@
+    @if (_status is not null)
+    {
+        <div class="status no-print @(_statusIsError ? "err" : "")">
+            <span>@_status</span>
+            @if (_statusPath is not null)
+            {
+                <button class="link" @onclick="() => ExportPaths.Reveal(_statusPath!)">Show in folder</button>
+            }
+            <button class="link dismiss" @onclick="ClearStatus">&#10005;</button>
+        </div>
+    }
+
+    @* ── Content ─────────────────────────────────────────────────────────── *@
+    <div class="content">
+
+        @if (_editing)
+        {
+            <textarea class="md-source no-print" spellcheck="false"
+                      value="@_source"
+                      @oninput="OnSourceInput"
+                      @onkeydown="OnSourceKeyDown"></textarea>
+        }
+
+        <div class="doc-pane">
+            @if (_hasDocument)
+            {
+                <article class="doc-render">
+                    @((MarkupString)_html)
+                </article>
+            }
+            else
+            {
+                <div class="empty no-print">
+                    <h1>Markdown Viewer</h1>
+                    <p>Open a <code>.md</code> file, or make this app the default handler and just double-click one.</p>
+                    <button class="tb primary" @onclick="OpenAsync">Open a file…</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private MarkdownFile _file = MarkdownFile.Untitled();
+    private string _source = string.Empty;
+    private string _html = string.Empty;
+    private bool _editing;
+    private bool _dirty;
+
+    private string? _status;
+    private string? _statusPath;
+    private bool _statusIsError;
+
+    // Re-rendering on every keystroke is wasteful on a long document, so the
+    // preview lags the caret by a beat instead.
+    private CancellationTokenSource? _previewDebounce;
+
+    private bool _hasDocument => _html.Length > 0;
+
+    private string DisplayName => _file.Path.Length > 0
+        ? Path.GetFileName(_file.Path)
+        : (_hasDocument ? "Untitled" : "No file open");
+
+    /// <summary>Title used for the ePub/Word exports and their filenames.</summary>
+    private string DocumentTitle =>
+        MarkdownRenderer.LeadingTitle(_source)
+        ?? (_file.Path.Length > 0 ? Path.GetFileNameWithoutExtension(_file.Path) : "Untitled");
+
+    /// <summary>True when the markdown already opens with its own H1.</summary>
+    private bool HasOwnTitle => MarkdownRenderer.LeadingTitle(_source) is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The file the app was launched with, parked by Platforms/Windows/App.xaml.cs.
+        if (PendingFile.Take() is { Length: > 0 } path)
+            await LoadAsync(path);
+    }
+
+    // ── File operations ──────────────────────────────────────────────────────
+
+    private async Task OpenAsync()
+    {
+        try
+        {
+            if (await Dialogs.PickMarkdownAsync() is { Length: > 0 } path)
+                await LoadAsync(path);
+        }
+        catch (Exception ex)
+        {
+            Error($"Couldn't open that file: {ex.Message}");
+        }
+    }
+
+    private async Task LoadAsync(string path)
+    {
+        try
+        {
+            _file = await MarkdownFile.LoadAsync(path);
+            _source = _file.Text;
+            _html = MarkdownRenderer.ToHtmlString(_source);
+            _dirty = false;
+            _editing = false;
+            ClearStatus();
+        }
+        catch (Exception ex)
+        {
+            Error($"Couldn't read {Path.GetFileName(path)}: {ex.Message}");
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!_dirty || _file.Path.Length == 0) return;
+
+        try
+        {
+            await _file.SaveAsync(_source);
+            _dirty = false;
+            Info($"Saved {Path.GetFileName(_file.Path)}");
+        }
+        catch (Exception ex)
+        {
+            Error($"Couldn't save: {ex.Message}");
+        }
+    }
+
+    private async Task SaveAsMarkdownAsync()
+    {
+        try
+        {
+            var suggested = _file.Path.Length > 0
+                ? Path.GetFileNameWithoutExtension(_file.Path)
+                : ExportPaths.Sanitize(DocumentTitle);
+
+            if (await Dialogs.SaveAsAsync(suggested, ".md", "Markdown") is not { Length: > 0 } path)
+                return;
+
+            await _file.SaveAsync(_source, path);
+            _file = _file.At(path);
+            _dirty = false;
+            Info($"Saved {Path.GetFileName(path)}", path);
+        }
+        catch (Exception ex)
+        {
+            Error($"Couldn't save: {ex.Message}");
+        }
+    }
+
+    // ── Editing ──────────────────────────────────────────────────────────────
+
+    private void ToggleEdit()
+    {
+        _editing = !_editing;
+        ClearStatus();
+    }
+
+    private async Task OnSourceInput(ChangeEventArgs e)
+    {
+        _source = e.Value?.ToString() ?? string.Empty;
+        _dirty = _source != _file.Text;
+
+        _previewDebounce?.Cancel();
+        _previewDebounce = new CancellationTokenSource();
+        var token = _previewDebounce.Token;
+
+        try
+        {
+            await Task.Delay(200, token);
+            _html = MarkdownRenderer.ToHtmlString(_source);
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+            // Superseded by a later keystroke — the newer render will land instead.
+        }
+    }
+
+    private async Task OnSourceKeyDown(KeyboardEventArgs e)
+    {
+        if (e.CtrlKey && e.Key.Equals("s", StringComparison.OrdinalIgnoreCase))
+            await SaveAsync();
+    }
+
+    // ── Output ───────────────────────────────────────────────────────────────
+
+    private async Task PrintAsync()
+    {
+        if (!Printer.IsReady) { Error("The print engine isn't ready yet — try again in a moment."); return; }
+        await Printer.ShowPrintDialogAsync();
+    }
+
+    private async Task ExportPdfAsync()
+    {
+        if (!Printer.IsReady) { Error("The print engine isn't ready yet — try again in a moment."); return; }
+
+        var target = ExportPaths.For(NullIfEmpty(_file.Path), DocumentTitle, ".pdf");
+        try
+        {
+            if (await Printer.PrintToPdfAsync(target))
+                Info($"PDF written to {Path.GetFileName(target)}", target);
+            else
+                Error("WebView2 declined to produce the PDF.");
+        }
+        catch (Exception ex)
+        {
+            Error($"Couldn't write the PDF: {ex.Message}");
+        }
+    }
+
+    private async Task ExportWordAsync()
+    {
+        var target = ExportPaths.For(NullIfEmpty(_file.Path), DocumentTitle, ".doc");
+        try
+        {
+            var bytes = WordExporter.ToDoc(DocumentTitle, _html, includeTitleHeading: !HasOwnTitle);
+            await File.WriteAllBytesAsync(target, bytes);
+            Info($"Word document written to {Path.GetFileName(target)}", target);
+        }
+        catch (Exception ex)
+        {
+            Error($"Couldn't write the Word document: {ex.Message}");
+        }
+    }
+
+    private async Task ExportEpubAsync()
+    {
+        var target = ExportPaths.For(NullIfEmpty(_file.Path), DocumentTitle, ".epub");
+        try
+        {
+            var bytes = await EpubGenerator.GenerateAsync(DocumentTitle, _html, includeTitleHeading: !HasOwnTitle);
+            await File.WriteAllBytesAsync(target, bytes);
+            Info($"ePub written to {Path.GetFileName(target)}", target);
+        }
+        catch (Exception ex)
+        {
+            Error($"Couldn't write the ePub: {ex.Message}");
+        }
+    }
+
+    // ── Status helpers ───────────────────────────────────────────────────────
+
+    private static string? NullIfEmpty(string s) => s.Length == 0 ? null : s;
+
+    private void Info(string message, string? path = null)
+    {
+        _status = message;
+        _statusPath = path;
+        _statusIsError = false;
+    }
+
+    private void Error(string message)
+    {
+        _status = message;
+        _statusPath = null;
+        _statusIsError = true;
+    }
+
+    private void ClearStatus()
+    {
+        _status = null;
+        _statusPath = null;
+        _statusIsError = false;
+    }
+}

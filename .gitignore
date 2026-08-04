@@ -1,0 +1,40 @@
+## Build output
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## MSIX / packaging output
+AppPackages/
+BundleArtifacts/
+*.msix
+*.msixbundle
+*.appx
+*.appxbundle
+*.appxupload
+*.cer
+*.pfx
+*.snk
+
+## Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
+launchSettings.local.json
+
+## OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+## NuGet
+*.nupkg
+packages/
+!packages/build/
+project.lock.json
+project.assets.json
