@@ -1,7 +1,17 @@
 # Markdown Viewer
 
+[![Latest release](https://img.shields.io/github/v/release/pontifexrm/MDViewer?label=download&color=2B579A)](https://github.com/pontifexrm/MDViewer/releases/latest)
+[![Licence](https://img.shields.io/github/license/pontifexrm/MDViewer?color=2B579A)](LICENSE)
+
 A Windows desktop viewer for `.md` files — double-click a markdown file and read it
 rendered, with print, PDF, Word and ePub output. .NET MAUI Blazor Hybrid (WebView2).
+
+### ⬇ [Download the latest release](https://github.com/pontifexrm/MDViewer/releases/latest)
+
+Windows 10 1809 (build 17763) or later, x64. The package is signed with a
+self-signed certificate, so its certificate has to be trusted before Windows will
+install it — three commands from an elevated prompt, see
+[Install a release](#install-a-release).
 
 The rendering pipeline is the same one our internal knowledge base uses
 (Markdig, `UseAdvancedExtensions().DisableHtml()`), so a file looks here exactly as
