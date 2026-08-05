@@ -38,7 +38,11 @@ rendered, with editing, printing, and PDF, Word and ePub export.
 ### Known issues
 
 - The installer certificate is self-signed, so the `.cer` must be trusted before
-  the `.msix` will install. `Install.ps1` does both and self-elevates.
+  the `.msix` will install, which requires an elevated prompt.
+- The package depends on `Microsoft.WindowsAppRuntime.1.7`, which ships as a
+  release asset and must be installed first on a machine that lacks it.
+- `Install.ps1` expects the build output's `Dependencies\x64\` folder layout, so it
+  does not work against release assets downloaded flat into one folder.
 - Release publishes generate no symbols package while `mspdbcmf.exe` is absent.
 - `MDViewer.csproj` carries two targets working around a `maui-windows` 10.0.20
   workload bug that omits the Blazor host assets from build output and the MSIX

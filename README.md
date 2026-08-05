@@ -50,6 +50,24 @@ Paths in the rest of this README are relative to the repo root unless a `cd` say
 otherwise. Build commands name the project folder rather than the solution,
 because publishing the MSIX has to target the app project on its own.
 
+## Install a release
+
+From [Releases](https://github.com/pontifexrm/MDViewer/releases), download
+`MDViewer_<ver>_x64.msix`, `MDViewer_<ver>_x64.cer` and
+`Microsoft.WindowsAppRuntime.1.7.msix` into one folder. The package is signed with a
+self-signed certificate, so Windows will not install it until that certificate is
+trusted — which needs an elevated prompt:
+
+```powershell
+Import-Certificate -FilePath .\MDViewer_1.0.4.0_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Add-AppxPackage .\Microsoft.WindowsAppRuntime.1.7.msix
+Add-AppxPackage .\MDViewer_1.0.4.0_x64.msix
+```
+
+The runtime is a declared dependency of the package (`Microsoft.WindowsAppRuntime.1.7`)
+and the install fails without it, so it ships as a release asset. Skip that line if
+the machine already has it.
+
 ## Build
 
 `global.json` pins the SDK to the GA 10.0.1xx band with `allowPrerelease: false`.
