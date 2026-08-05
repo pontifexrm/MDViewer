@@ -7,7 +7,7 @@ First public release.
 A Windows desktop viewer for `.md` files: double-click a markdown file and read it
 rendered, with editing, printing, and PDF, Word and ePub export.
 
-- Rendering matches the our internal knowledge base knowledge base pipeline (Markdig,
+- Rendering matches our internal knowledge base pipeline (Markdig,
   `UseAdvancedExtensions().DisableHtml()`), so a file looks here exactly as it would
   after being pasted into a KB article. Inline HTML stays literal by design.
 - Editing works on the markdown source rather than rich text, so saving is a

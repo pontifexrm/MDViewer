@@ -6,9 +6,9 @@ using AngleSharp.Xhtml;
 namespace MDViewer.Services;
 
 /// <summary>
-/// Builds a valid ePub 3 ZIP in memory from rendered markdown. Ported from
-/// our knowledge base's ePub generator — same file layout and
-/// stylesheet, with the KB DTO parameters replaced by a plain title/HTML pair.
+/// Builds a valid ePub 3 ZIP in memory from rendered markdown. Ported from our
+/// internal knowledge base's ePub generator — same file layout and stylesheet,
+/// with the KB DTO parameters replaced by a plain title/HTML pair.
 /// ePub is the open e-reader format natively supported by Kindle (2022+), Kobo,
 /// Apple Books, etc.
 /// </summary>

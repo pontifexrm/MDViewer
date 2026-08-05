@@ -3,10 +3,10 @@
 A Windows desktop viewer for `.md` files — double-click a markdown file and read it
 rendered, with print, PDF, Word and ePub output. .NET MAUI Blazor Hybrid (WebView2).
 
-The rendering pipeline is the same one the our internal knowledge base knowledge base uses
+The rendering pipeline is the same one our internal knowledge base uses
 (Markdig, `UseAdvancedExtensions().DisableHtml()`), so a file looks here exactly as
 it would after being pasted into a KB article. The ePub generator is ported from
-`our knowledge base's ePub generator`.
+that knowledge base's own ePub generator.
 
 ## What it does
 

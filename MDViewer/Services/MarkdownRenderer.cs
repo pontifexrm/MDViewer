@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Components;
 namespace MDViewer.Services;
 
 /// <summary>
-/// Markdown to HTML, using the same pipeline as the our internal knowledge base knowledge base
-/// (our knowledge base's renderer) so a file renders here exactly as it
-/// would after being pasted into a KB article.
+/// Markdown to HTML, using the same pipeline as our internal knowledge base's
+/// renderer, so a file renders here exactly as it would after being pasted into
+/// a KB article.
 /// </summary>
 public static class MarkdownRenderer
 {

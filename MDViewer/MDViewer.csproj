@@ -68,7 +68,8 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
 
-        <!-- Same versions as our internal knowledge base, so rendering and ePub output behave identically -->
+        <!-- Same versions as our internal knowledge base, so rendering and ePub
+             output behave identically -->
         <PackageReference Include="Markdig" Version="1.3.2" />
         <PackageReference Include="AngleSharp" Version="1.5.2" />
     </ItemGroup>
