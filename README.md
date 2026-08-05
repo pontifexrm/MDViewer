@@ -186,3 +186,7 @@ cd MDViewer.Harness && dotnet run -- sample.md
 ```
 
 It writes its exports beside `sample.md`; those outputs are ignored by git.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE).
