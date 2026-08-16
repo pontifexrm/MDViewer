@@ -249,6 +249,56 @@ Check("ordinary prose passes through",
     prose.Contains("<h2>") && prose.Contains("<em>"));
 
 Console.WriteLine();
+Console.WriteLine("== ReadingPositions ==");
+
+// Somewhere disposable, not the user's real app data.
+var posDir = Path.Combine(outDir, "positions");
+if (Directory.Exists(posDir)) Directory.Delete(posDir, recursive: true);
+ReadingPositions.StorageFolder = posDir;
+
+Check("unknown book has no stored position", ReadingPositions.For(epub2Path) is null);
+
+await ReadingPositions.SaveAsync(epub2Path, chapter: 1, block: 7, fraction: 0.25);
+var stored = ReadingPositions.For(epub2Path);
+Check("position round-trips", stored is { Chapter: 1, Block: 7 }, $"{stored?.Chapter}/{stored?.Block}");
+Check("fraction round-trips", stored is not null && Math.Abs(stored.Fraction - 0.25) < 0.0001);
+
+await ReadingPositions.SaveAsync(epub2Path, chapter: 2, block: 0, fraction: 0);
+Check("saving again replaces rather than duplicates",
+    ReadingPositions.For(epub2Path) is { Chapter: 2, Block: 0 });
+
+Check("lookup ignores path casing",
+    ReadingPositions.For(epub2Path.ToUpperInvariant()) is { Chapter: 2 });
+Check("lookup normalises a relative path",
+    ReadingPositions.For(Path.Combine(Path.GetDirectoryName(epub2Path)!, ".", "epub2.epub")) is { Chapter: 2 });
+
+// Two books must not share an entry.
+await ReadingPositions.SaveAsync(epubPath, chapter: 0, block: 3, fraction: 0);
+Check("books are tracked separately",
+    ReadingPositions.For(epub2Path) is { Chapter: 2 } && ReadingPositions.For(epubPath) is { Block: 3 });
+
+await ReadingPositions.ForgetAsync(epub2Path);
+Check("a forgotten book is gone", ReadingPositions.For(epub2Path) is null);
+Check("forgetting one leaves the others", ReadingPositions.For(epubPath) is { Block: 3 });
+
+// A half-written or hand-mangled file must not stop a book from opening.
+await File.WriteAllTextAsync(Path.Combine(posDir, "reading-positions.json"), "{ not json at all");
+Check("corrupt store degrades to no position rather than throwing",
+    ReadingPositions.For(epubPath) is null);
+await ReadingPositions.SaveAsync(epubPath, chapter: 4, block: 1, fraction: 0.5);
+Check("corrupt store is replaced by the next save",
+    ReadingPositions.For(epubPath) is { Chapter: 4 });
+
+// The file is capped, so a heavy reader's store cannot grow without bound.
+for (var i = 0; i < 240; i++)
+    await ReadingPositions.SaveAsync(Path.Combine(posDir, $"book{i}.epub"), i, 0, 0);
+var kept = Enumerable.Range(0, 240)
+    .Count(i => ReadingPositions.For(Path.Combine(posDir, $"book{i}.epub")) is not null);
+Check("store is capped at 200 books", kept <= 200, $"{kept} kept");
+Check("the most recent books are the ones kept",
+    ReadingPositions.For(Path.Combine(posDir, "book239.epub")) is not null);
+
+Console.WriteLine();
 Console.WriteLine("== ExportPaths ==");
 
 // Resolve "beside the source" against a directory of our own rather than the

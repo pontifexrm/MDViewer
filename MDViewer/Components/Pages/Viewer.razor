@@ -165,6 +165,8 @@
 
     private DotNetObjectReference<Viewer>? _selfRef;
     private string? _revealFragment;
+    private int? _revealBlock;
+    private double _revealFraction;
     private bool _revealPending;
 
     private string? _status;
@@ -212,8 +214,12 @@
         {
             _revealPending = false;
             var fragment = _revealFragment;
+            var block = _revealBlock;
+            var fraction = _revealFraction;
             _revealFragment = null;
-            await JS.InvokeVoidAsync("mdvEpub.reveal", fragment);
+            _revealBlock = null;
+            _revealFraction = 0;
+            await JS.InvokeVoidAsync("mdvEpub.reveal", fragment, block, fraction);
         }
     }
 
@@ -264,10 +270,15 @@
         {
             var book = await EpubDocument.LoadAsync(path);
 
+            // Clamped, not trusted: the file may have been replaced by a shorter
+            // edition since the position was written.
+            var resume = ReadingPositions.For(path);
+            var start = resume is null ? 0 : Math.Clamp(resume.Chapter, 0, book.Chapters.Count - 1);
+
             _epub = book;
-            _chapter = 0;
+            _chapter = start;
             _tocOpen = book.Contents.Count > 1;
-            _html = await book.ChapterHtmlAsync(0);
+            _html = await book.ChapterHtmlAsync(start);
 
             // Editing is meaningless for a book, and the exports still want to land
             // beside it — which is all ExportPaths needs the path for.
@@ -277,8 +288,14 @@
             _file = MarkdownFile.Untitled().At(path);
 
             _revealFragment = null;
+            _revealBlock = resume?.Block;
+            _revealFraction = resume?.Fraction ?? 0;
             _revealPending = true;
-            ClearStatus();
+
+            if (resume is not null && (start > 0 || resume.Block > 0))
+                Info($"Picked up where you left off — {book.Chapters[start].Title}");
+            else
+                ClearStatus();
         }
         catch (Exception ex)
         {
@@ -337,13 +354,31 @@
             _html = await book.ChapterHtmlAsync(index);
             _chapter = index;
             _revealFragment = fragment;
+            _revealBlock = null;
+            _revealFraction = 0;
             _revealPending = true;
             ClearStatus();
+
+            // Recorded now rather than waiting for the scroll that follows, so
+            // closing the window straight after turning a chapter still remembers it.
+            await ReadingPositions.SaveAsync(_file.Path, index, 0, 0);
         }
         catch (Exception ex)
         {
             Error($"Couldn't read that chapter: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Called from wwwroot/epub.js on a debounced scroll. Writes straight through to
+    /// disk instead of waiting for the window to close, which would lose the position
+    /// if the app were killed. No StateHasChanged — nothing on screen changes.
+    /// </summary>
+    [JSInvokable]
+    public async Task EpubScrolled(int block, double fraction)
+    {
+        if (_epub is null || _file.Path.Length == 0) return;
+        await ReadingPositions.SaveAsync(_file.Path, _chapter, block, fraction);
     }
 
     /// <summary>Called from wwwroot/epub.js for a link into another chapter.</summary>

@@ -24,12 +24,18 @@ sidebar, one chapter at a time, Prev/Next through the spine.
 - The book's own CSS is dropped and chapters render through the app's own styles,
   so custom fonts, drop caps and verse indentation are lost. Remote images are not
   fetched. SVG and MathML are discarded, though cover art survives.
+- Reopening a book returns to where you left off. The position is a chapter plus a
+  block index rather than a scroll offset, so it survives the reflow that zooming
+  or resizing causes. Written on a debounced scroll rather than at window close, so
+  killing the app does not lose it; stored in one capped JSON file under
+  `%LOCALAPPDATA%\MDViewer`, keyed by path.
 - Editing and Save are hidden in reader mode. Print and PDF act on the current
   chapter and still land beside the book.
 - Registered as a handler for `.epub`, separately from the markdown association, so
   it can be the default for one and not the other.
-- 35 new harness checks (43 → 78), including a round-trip that reads back a book the app's
-  own generator wrote, a hand-built EPUB 2, and the sanitiser's scripting vectors.
+- 48 new harness checks (43 → 91), including a round-trip that reads back a book the
+  app's own generator wrote, a hand-built EPUB 2, the sanitiser's scripting vectors,
+  and a reading-position store that is fed a corrupt file.
 
 ## 1.0.4 — 2026-08-05
 

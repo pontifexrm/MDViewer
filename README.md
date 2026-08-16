@@ -58,6 +58,14 @@ are no page turns and no font controls, because WebView2's own zoom (Ctrl+`+`,
 Ctrl+scroll) already reflows the text and this only ever runs on a desktop.
 Editing and Save are hidden; Print and PDF stay, and act on the current chapter.
 
+Reopening a book returns to where you left off. The position is a **chapter plus
+the index of a block within it**, not a scroll offset in pixels — zooming or
+resizing reflows the text and would invalidate a pixel offset, which is the same
+reason a paginated reader has to store a CFI rather than a page number. It is
+written on a debounced scroll rather than at window close, so being killed does
+not lose it, and lives in one JSON file under `%LOCALAPPDATA%\MDViewer` — books
+are keyed by path, so moving a file forgets its position.
+
 `Services/EpubDocument.cs` is `EpubGenerator` run backwards — same container/OPF
 structure — plus the two things the generator never has to handle because it only
 reads back what it wrote: **EPUB 2** (a `toc.ncx` and no nav document, which is
