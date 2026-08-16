@@ -22,8 +22,10 @@ sidebar, one chapter at a time, Prev/Next through the spine.
   in-app chapter navigation, `http(s)` links open in the default browser, and every
   other scheme is dropped.
 - The book's own CSS is dropped and chapters render through the app's own styles,
-  so custom fonts, drop caps and verse indentation are lost. Remote images are not
-  fetched. SVG and MathML are discarded, though cover art survives.
+  so custom fonts, drop caps and verse indentation are lost. Class attributes go
+  with it — with no stylesheet they style nothing, but they can still collide with
+  the app's own UI classes. Remote images are not fetched. SVG and MathML are
+  discarded, though cover art survives.
 - Reopening a book returns to where you left off. The position is a chapter plus a
   block index rather than a scroll offset, so it survives the reflow that zooming
   or resizing causes. Written on a debounced scroll rather than at window close, so
@@ -33,7 +35,7 @@ sidebar, one chapter at a time, Prev/Next through the spine.
   chapter and still land beside the book.
 - Registered as a handler for `.epub`, separately from the markdown association, so
   it can be the default for one and not the other.
-- 48 new harness checks (43 → 91), including a round-trip that reads back a book the
+- 51 new harness checks (43 → 94), including a round-trip that reads back a book the
   app's own generator wrote, a hand-built EPUB 2, the sanitiser's scripting vectors,
   and a reading-position store that is fed a corrupt file.
 

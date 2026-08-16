@@ -87,6 +87,13 @@ Consequences worth knowing before changing it:
 - The book's own CSS is dropped entirely — `<style>`, `<link>` and `style=`.
   Chapters render through the app's `.doc-render` rules, so custom fonts, drop caps
   and verse indentation are lost. This is a deliberate trade, not an oversight.
+- `class` goes with it, which is a rendering decision rather than a security one.
+  Once the stylesheet is gone the book's class names style nothing, but they can
+  still *collide*: a documentation ePub wrapping each chapter in
+  `<div class="content">` picked up the app shell's own `.content { display: flex }`
+  and laid every paragraph out as a column. `no-print` would have been worse —
+  chapters silently missing from a printout. `id` stays, because intra-chapter
+  anchors need it, which leaves only `#blazor-error-ui` as a collidable name.
 - Remote resources are never fetched: an `<img>` pointing at a web server is a
   tracking pixel that would report when the file was opened.
 - SVG and MathML are discarded. Cover art survives, because an `<image>` inside an

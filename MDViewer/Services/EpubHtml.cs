@@ -102,10 +102,22 @@ public static class EpubHtml
     /// poster, srcset, usemap, xlink:href) and <c>style</c>; href on an anchor and
     /// src on an image survive this pass and are validated separately below.
     /// Excluding rather than listing "on*" is what makes event handlers fail closed.
+    ///
+    /// <c>class</c> is excluded too, which is a rendering decision rather than a
+    /// security one. The book's stylesheet is dropped, so its class names style
+    /// nothing — but they still *collide*. A documentation ePub with
+    /// <c>&lt;div class="content"&gt;</c> wrapping each chapter picked up the app
+    /// shell's own <c>.content { display: flex }</c> and laid every paragraph out
+    /// as a column. <c>no-print</c> would have been worse: chapters that silently
+    /// vanish from a printout. Class names that mean nothing cannot be allowed to
+    /// mean something accidentally.
+    ///
+    /// <c>id</c> stays, because intra-chapter anchors need it, leaving a much
+    /// narrower residue: only #blazor-error-ui is styled by id in app.css.
     /// </summary>
     private static readonly HashSet<string> AllowedAttributes = new(StringComparer.OrdinalIgnoreCase)
     {
-        "id", "class", "alt", "title", "lang", "dir",
+        "id", "alt", "title", "lang", "dir",
         "colspan", "rowspan", "headers", "scope", "abbr",
         "width", "height", "align", "valign", "start", "reversed", "value", "datetime",
     };

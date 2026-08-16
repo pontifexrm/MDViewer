@@ -220,6 +220,18 @@ Check("style element dropped",
 Check("style attribute dropped",
     !(await Clean("<p style=\"color:red\">x</p>")).Contains("style="));
 
+// A book's class names style nothing once its stylesheet is gone, but they still
+// collide: a documentation ePub wrapping chapters in <div class="content"> picked
+// up the app shell's own .content { display: flex } and laid every paragraph out
+// as a column. class="no-print" would have dropped chapters from a printout.
+Check("class attribute dropped, so book classes cannot collide with the app's",
+    !(await Clean("<div class=\"content\"><p>x</p></div>")).Contains("class="));
+Check("dropping the class keeps the element and its text",
+    (await Clean("<div class=\"content\"><p>kept</p></div>")) is var declassed &&
+    declassed.Contains("<div>") && declassed.Contains("kept"));
+Check("id survives, because intra-chapter anchors need it",
+    (await Clean("<h2 id=\"the-mindset\">M</h2>")).Contains("id=\"the-mindset\""));
+
 Check("remote image is not fetched",
     !(await Clean("<img src=\"https://tracker.example/pixel.gif\">")).Contains("tracker.example"));
 Check("remote image keeps its alt text",
