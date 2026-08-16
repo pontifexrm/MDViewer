@@ -152,6 +152,81 @@ html, body {
     padding: 1.6rem;
 }
 
+/* ── ePub contents sidebar ──────────────────────────────────────────────── */
+
+.toc {
+    flex: 0 0 17rem;
+    overflow-y: auto;
+    border-right: 1px solid #e0e0e0;
+    background: #fafafa;
+    padding: 0.9rem 0 1.4rem;
+}
+
+.toc-head {
+    padding: 0 1rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #767676;
+}
+
+.toc ol { list-style: none; margin: 0; padding: 0; }
+
+.toc button {
+    display: block;
+    width: 100%;
+    border: none;
+    background: none;
+    text-align: left;
+    padding: 0.36rem 1rem;
+    font: inherit;
+    font-size: 0.855rem;
+    line-height: 1.35;
+    color: #2c2c2c;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+}
+
+.toc button:hover { background: #efefef; }
+
+.toc li.cur > button {
+    background: #e6effa;
+    border-left-color: #2b579a;
+    color: #17457f;
+    font-weight: 600;
+}
+
+/* Nesting depth from the book's own table of contents, capped at three so a
+   deeply nested one cannot indent itself off the side of the pane. */
+.toc li.depth-1 > button { padding-left: 1.9rem; font-size: 0.82rem; color: #4a4a4a; }
+.toc li.depth-2 > button { padding-left: 2.8rem; font-size: 0.8rem; color: #5c5c5c; }
+.toc li.depth-3 > button { padding-left: 3.7rem; font-size: 0.8rem; color: #5c5c5c; }
+
+.chapter-count {
+    padding: 0 0.55rem;
+    font-size: 0.8rem;
+    color: #5c5c5c;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Book chapters are prose, so they get a serif face — the same one the ePub
+   generator writes into its own stylesheet. */
+.doc-render.book {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.02rem;
+    line-height: 1.75;
+}
+
+/* Links in a book carry no href — EpubHtml strips it so a click cannot navigate
+   the WebView away from the app — so they need to be told to look clickable. */
+.doc-render .epub-link {
+    color: #0969da;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 .doc-render {
     max-width: 46rem;
     margin: 0 auto;

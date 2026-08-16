@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+### Reads ePub
+
+The app already wrote ePub; it now opens them too. Selecting a `.epub` — from the
+picker, the file association, or the command line — switches to a reader: contents
+sidebar, one chapter at a time, Prev/Next through the spine.
+
+- Scrolling only. No page turns and no font controls: WebView2's own zoom already
+  reflows the text, and this only runs on a desktop.
+- Both table-of-contents formats are read — EPUB 3 `nav.xhtml` and EPUB 2
+  `toc.ncx` — so books predating 2015 open with real chapter titles rather than
+  "Chapter 7". Nesting depth is kept, and contents entries pointing *into* a
+  chapter scroll to the right place.
+- Chapter markup goes through an allow-list sanitiser (`Services/EpubHtml.cs`)
+  before it reaches the DOM. Markdown's `DisableHtml` rule cannot apply to a format
+  that is nothing but authored HTML, and EPUB 3 permits scripting, so elements and
+  attributes not explicitly allowed are removed instead.
+- Links never navigate the WebView away from the running app: internal links become
+  in-app chapter navigation, `http(s)` links open in the default browser, and every
+  other scheme is dropped.
+- The book's own CSS is dropped and chapters render through the app's own styles,
+  so custom fonts, drop caps and verse indentation are lost. Remote images are not
+  fetched. SVG and MathML are discarded, though cover art survives.
+- Editing and Save are hidden in reader mode. Print and PDF act on the current
+  chapter and still land beside the book.
+- Registered as a handler for `.epub`, separately from the markdown association, so
+  it can be the default for one and not the other.
+- 35 new harness checks (43 → 78), including a round-trip that reads back a book the app's
+  own generator wrote, a hand-built EPUB 2, and the sanitiser's scripting vectors.
+
 ## 1.0.4 — 2026-08-05
 
 First public release.

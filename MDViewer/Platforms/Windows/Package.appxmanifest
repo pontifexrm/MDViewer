@@ -55,6 +55,17 @@
             </uap:SupportedFileTypes>
           </uap:FileTypeAssociation>
         </uap:Extension>
+
+        <!-- The reader side: the app opens ePub books as well as markdown. Separate
+             association so a user can make it the default for one and not the other. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="epub">
+            <uap:DisplayName>ePub Book</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.epub</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
       </Extensions>
     </Application>
   </Applications>

@@ -141,6 +141,114 @@ using (var zip = new ZipArchive(new MemoryStream(withImage), ZipArchiveMode.Read
 }
 
 Console.WriteLine();
+Console.WriteLine("== EpubDocument: reading back what EpubGenerator wrote ==");
+
+// The reader is the generator inverted, so the strongest single check is that a
+// book this app produced opens again with its title, spine and content intact.
+var roundTrip = await EpubDocument.LoadAsync(epubPath);
+
+Check("round-trip: title recovered from the OPF",
+    roundTrip.Title == "Quarterly Operations Review", roundTrip.Title);
+Check("round-trip: one spine document", roundTrip.Chapters.Count == 1, $"{roundTrip.Chapters.Count}");
+Check("round-trip: contents built from nav.xhtml", roundTrip.Contents.Count == 1);
+Check("round-trip: contents entry points at the chapter",
+    roundTrip.Contents.Count > 0 && roundTrip.Contents[0].ChapterIndex == 0);
+
+var roundTripHtml = await roundTrip.ChapterHtmlAsync(0);
+Check("round-trip: chapter body survives", roundTripHtml.Contains("<table"));
+Check("round-trip: the book's own stylesheet link is gone", !roundTripHtml.Contains("<link"));
+
+Console.WriteLine();
+Console.WriteLine("== EpubDocument: EPUB 2 (toc.ncx, no nav document) ==");
+
+// EpubGenerator only ever emits EPUB 3, so this format has no round-trip to lean
+// on and needs a book built by hand.
+var epub2Path = Path.Combine(outDir, "epub2.epub");
+await File.WriteAllBytesAsync(epub2Path, BuildEpub2());
+var epub2 = await EpubDocument.LoadAsync(epub2Path);
+
+Check("epub2: title from dc:title", epub2.Title == "An Older Book", epub2.Title);
+Check("epub2: author from dc:creator", epub2.Author == "A. Writer", epub2.Author);
+Check("epub2: both spine documents found", epub2.Chapters.Count == 2, $"{epub2.Chapters.Count}");
+Check("epub2: NCX supplied the chapter titles",
+    epub2.Contents.Count >= 2 && epub2.Contents[0].Title == "The Beginning",
+    epub2.Contents.FirstOrDefault()?.Title);
+Check("epub2: nested navPoint keeps its depth",
+    epub2.Contents.Any(e => e.Depth == 1 && e.Title == "A Sub-section"));
+Check("epub2: nested navPoint keeps its fragment",
+    epub2.Contents.Any(e => e.Fragment == "sub"));
+
+var epub2Ch1 = await epub2.ChapterHtmlAsync(0);
+Check("epub2: image resolved through ../ and inlined as a data URI",
+    epub2Ch1.Contains("src=\"data:image/png;base64,"), epub2Ch1);
+Check("epub2: link to another chapter became a chapter reference",
+    epub2Ch1.Contains("data-epub-chapter=\"1\""), epub2Ch1);
+Check("epub2: percent-encoded href still resolves",
+    (await epub2.ChapterHtmlAsync(1)).Contains("data-epub-chapter=\"0\""));
+
+Console.WriteLine();
+Console.WriteLine("== EpubHtml: sanitising untrusted chapter markup ==");
+
+// Everything below reaches the DOM through MarkupString in the same WebView that
+// hosts Blazor with .NET interop, so each of these is a live scripting vector.
+static async Task<string> Clean(string html) =>
+    await EpubHtml.ToSafeBodyAsync(html, _ => null, _ => 1);
+
+var scripted = await Clean("<p>before</p><script>alert(1)</script><p>after</p>");
+Check("script element removed", !scripted.Contains("alert(1)"), scripted);
+Check("text either side of it survives", scripted.Contains("before") && scripted.Contains("after"));
+
+Check("inline event handler removed",
+    !(await Clean("<p onclick=\"alert(1)\">x</p>")).Contains("onclick"));
+Check("error handler on an image removed",
+    !(await Clean("<img src=\"nope.png\" onerror=\"alert(1)\">")).Contains("onerror"));
+Check("javascript: href removed",
+    !(await Clean("<a href=\"javascript:alert(1)\">x</a>")).Contains("javascript:"));
+Check("javascript: link keeps its text",
+    (await Clean("<a href=\"javascript:alert(1)\">click me</a>")).Contains("click me"));
+Check("iframe removed",
+    !(await Clean("<iframe src=\"https://example.com\"></iframe>")).Contains("iframe"));
+Check("svg removed (it can carry script and foreignObject)",
+    !(await Clean("<svg><script>alert(1)</script></svg>")).Contains("alert(1)"));
+Check("form controls removed",
+    !(await Clean("<form><input name=\"pw\"></form>")).Contains("<input"));
+
+Check("book stylesheet link dropped",
+    !(await Clean("<link rel=\"stylesheet\" href=\"style.css\"><p>x</p>")).Contains("<link"));
+Check("style element dropped",
+    !(await Clean("<style>p{color:red}</style><p>x</p>")).Contains("color:red"));
+Check("style attribute dropped",
+    !(await Clean("<p style=\"color:red\">x</p>")).Contains("style="));
+
+Check("remote image is not fetched",
+    !(await Clean("<img src=\"https://tracker.example/pixel.gif\">")).Contains("tracker.example"));
+Check("remote image keeps its alt text",
+    (await Clean("<img src=\"https://tracker.example/p.gif\" alt=\"a diagram\">")).Contains("a diagram"));
+
+Check("external link becomes a handled reference, not a live href",
+    (await Clean("<a href=\"https://example.com/x\">x</a>")) is var ext &&
+    ext.Contains("data-epub-external=\"https://example.com/x\"") && !ext.Contains("href="));
+Check("same-chapter anchor keeps its href",
+    (await Clean("<a href=\"#note1\">1</a>")).Contains("href=\"#note1\""));
+
+// Cover pages are almost always an <image> wrapped in an <svg>, and the <svg> is
+// discarded, so the bitmap has to be lifted out or the cover vanishes.
+var cover = await EpubHtml.ToSafeBodyAsync(
+    "<svg viewBox=\"0 0 600 800\"><image xlink:href=\"cover.jpg\"/></svg>",
+    href => href == "cover.jpg" ? [1, 2, 3] : null,
+    _ => null);
+Check("cover art survives the svg being discarded",
+    cover.Contains("<img") && cover.Contains("data:image/jpeg;base64,"), cover);
+Check("the svg wrapper itself is gone", !cover.Contains("<svg"), cover);
+
+Check("unknown element is unwrapped, not dropped",
+    (await Clean("<weirdwrapper><p>kept</p></weirdwrapper>")) is var unwrapped &&
+    unwrapped.Contains("kept") && !unwrapped.Contains("weirdwrapper"));
+Check("ordinary prose passes through",
+    (await Clean("<h2>Title</h2><p>Some <em>emphasis</em>.</p>")) is var prose &&
+    prose.Contains("<h2>") && prose.Contains("<em>"));
+
+Console.WriteLine();
 Console.WriteLine("== ExportPaths ==");
 
 // Resolve "beside the source" against a directory of our own rather than the
@@ -174,6 +282,115 @@ Console.WriteLine();
 Console.WriteLine($"{pass} passed, {fail} failed");
 Console.WriteLine($"artifacts in {outDir}");
 return fail == 0 ? 0 : 1;
+
+/// <summary>
+/// A hand-built EPUB 2 book: toc.ncx instead of a nav document, a DOCTYPE on the
+/// NCX (which the default .NET XML reader settings reject outright), an image
+/// referenced through "../", and a percent-encoded cross-chapter link. Everything
+/// EpubGenerator never produces, and therefore everything the round-trip test
+/// above cannot reach.
+/// </summary>
+static byte[] BuildEpub2()
+{
+    const string dotPng =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+    using var ms = new MemoryStream();
+    using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        void Add(string path, string content)
+        {
+            using var w = new StreamWriter(zip.CreateEntry(path).Open(), new UTF8Encoding(false));
+            w.Write(content);
+        }
+
+        Add("mimetype", "application/epub+zip");
+
+        Add("META-INF/container.xml", """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+              <rootfiles>
+                <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+              </rootfiles>
+            </container>
+            """);
+
+        Add("OEBPS/content.opf", """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="uid">
+              <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+                <dc:identifier id="uid">urn:uuid:test</dc:identifier>
+                <dc:title>An Older Book</dc:title>
+                <dc:creator>A. Writer</dc:creator>
+                <dc:language>en</dc:language>
+              </metadata>
+              <manifest>
+                <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+                <item id="c1" href="text/ch1.xhtml" media-type="application/xhtml+xml"/>
+                <item id="c2" href="text/ch2.xhtml" media-type="application/xhtml+xml"/>
+                <item id="dot" href="images/dot.png" media-type="image/png"/>
+              </manifest>
+              <spine toc="ncx">
+                <itemref idref="c1"/>
+                <itemref idref="c2"/>
+              </spine>
+            </package>
+            """);
+
+        Add("OEBPS/toc.ncx", """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN" "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">
+            <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+              <docTitle><text>An Older Book</text></docTitle>
+              <navMap>
+                <navPoint id="n1" playOrder="1">
+                  <navLabel><text>The Beginning</text></navLabel>
+                  <content src="text/ch1.xhtml"/>
+                  <navPoint id="n1a" playOrder="2">
+                    <navLabel><text>A Sub-section</text></navLabel>
+                    <content src="text/ch1.xhtml#sub"/>
+                  </navPoint>
+                </navPoint>
+                <navPoint id="n2" playOrder="3">
+                  <navLabel><text>The End</text></navLabel>
+                  <content src="text/ch2.xhtml"/>
+                </navPoint>
+              </navMap>
+            </ncx>
+            """);
+
+        Add("OEBPS/text/ch1.xhtml", """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <html xmlns="http://www.w3.org/1999/xhtml">
+            <head><title>Chapter One</title><link rel="stylesheet" href="../style.css"/></head>
+            <body>
+              <h1>The Beginning</h1>
+              <p>Opening lines.</p>
+              <p><img src="../images/dot.png" alt="a dot"/></p>
+              <h2 id="sub">A Sub-section</h2>
+              <p><a href="ch2.xhtml">Onwards</a>.</p>
+            </body>
+            </html>
+            """);
+
+        Add("OEBPS/text/ch2.xhtml", """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <html xmlns="http://www.w3.org/1999/xhtml">
+            <head><title>Chapter Two</title></head>
+            <body>
+              <h1>The End</h1>
+              <p><a href="ch%31.xhtml">Back to the start</a>.</p>
+            </body>
+            </html>
+            """);
+
+        var png = zip.CreateEntry("OEBPS/images/dot.png");
+        using var s = png.Open();
+        var bytes = Convert.FromBase64String(dotPng);
+        s.Write(bytes, 0, bytes.Length);
+    }
+    return ms.ToArray();
+}
 
 static bool IsWellFormedXml(string xml)
 {

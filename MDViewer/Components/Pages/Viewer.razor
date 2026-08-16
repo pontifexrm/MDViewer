@@ -1,13 +1,16 @@
 @page "/"
 @using Microsoft.AspNetCore.Components
+@using Microsoft.JSInterop
+@implements IDisposable
 @inject IDocumentPrinter Printer
 @inject IFileDialogs Dialogs
+@inject IJSRuntime JS
 
 <div class="app-shell @(_editing ? "mode-edit" : "mode-read")">
 
     @* ── Toolbar (never printed) ─────────────────────────────────────────── *@
     <div class="toolbar no-print">
-        <button class="tb" @onclick="OpenAsync" title="Open a markdown file (Ctrl+O)">
+        <button class="tb" @onclick="OpenAsync" title="Open a markdown file or an ePub (Ctrl+O)">
             <span class="ic">&#128193;</span>Open
         </button>
 
@@ -21,36 +24,67 @@
 
         <div class="spacer"></div>
 
-        <button class="tb @(_editing ? "on" : "")" @onclick="ToggleEdit"
-                title="@(_editing ? "Back to reading view" : "Edit the markdown source")">
-            <span class="ic">@(_editing ? "\U0001F441" : "✎")</span>@(_editing ? "Read" : "Edit")
-        </button>
-
-        @if (_editing)
+        @if (_epub is { } book)
         {
-            <button class="tb" @onclick="SaveAsync" disabled="@(!_dirty || _file.Path.Length == 0)"
-                    title="Save back to the original file (Ctrl+S)">
-                <span class="ic">&#128190;</span>Save
+            @* ── ePub: read-only, so chapter navigation replaces the edit controls ── *@
+            <button class="tb @(_tocOpen ? "on" : "")" @onclick="() => _tocOpen = !_tocOpen"
+                    title="Show or hide the contents">
+                <span class="ic">&#9776;</span>Contents
             </button>
-            <button class="tb" @onclick="SaveAsMarkdownAsync" title="Save to a new .md file">
-                Save As…
+
+            <span class="sep"></span>
+
+            <button class="tb" @onclick="() => GoToChapterAsync(_chapter - 1)"
+                    disabled="@(_chapter <= 0)" title="Previous chapter">
+                &#8249; Prev
             </button>
+            <span class="chapter-count" title="@book.Chapters[_chapter].Title">
+                @(_chapter + 1) / @book.Chapters.Count
+            </span>
+            <button class="tb" @onclick="() => GoToChapterAsync(_chapter + 1)"
+                    disabled="@(_chapter >= book.Chapters.Count - 1)" title="Next chapter">
+                Next &#8250;
+            </button>
+        }
+        else
+        {
+            <button class="tb @(_editing ? "on" : "")" @onclick="ToggleEdit"
+                    title="@(_editing ? "Back to reading view" : "Edit the markdown source")">
+                <span class="ic">@(_editing ? "\U0001F441" : "✎")</span>@(_editing ? "Read" : "Edit")
+            </button>
+
+            @if (_editing)
+            {
+                <button class="tb" @onclick="SaveAsync" disabled="@(!_dirty || _file.Path.Length == 0)"
+                        title="Save back to the original file (Ctrl+S)">
+                    <span class="ic">&#128190;</span>Save
+                </button>
+                <button class="tb" @onclick="SaveAsMarkdownAsync" title="Save to a new .md file">
+                    Save As…
+                </button>
+            }
         }
 
         <span class="sep"></span>
 
-        <button class="tb" @onclick="PrintAsync" disabled="@(!_hasDocument)" title="Print preview (also offers Save as PDF)">
+        <button class="tb" @onclick="PrintAsync" disabled="@(!_hasDocument)"
+                title="@(_epub is null ? "Print preview (also offers Save as PDF)" : "Print preview of this chapter")">
             <span class="ic">&#128424;</span>Print
         </button>
-        <button class="tb" @onclick="ExportPdfAsync" disabled="@(!_hasDocument)" title="Write a PDF next to the source file">
+        <button class="tb" @onclick="ExportPdfAsync" disabled="@(!_hasDocument)"
+                title="@(_epub is null ? "Write a PDF next to the source file" : "Write this chapter to a PDF next to the book")">
             PDF
         </button>
-        <button class="tb" @onclick="ExportWordAsync" disabled="@(!_hasDocument)" title="Write a Word document next to the source file">
-            Word
-        </button>
-        <button class="tb" @onclick="ExportEpubAsync" disabled="@(!_hasDocument)" title="Write an ePub next to the source file">
-            ePub
-        </button>
+
+        @if (_epub is null)
+        {
+            <button class="tb" @onclick="ExportWordAsync" disabled="@(!_hasDocument)" title="Write a Word document next to the source file">
+                Word
+            </button>
+            <button class="tb" @onclick="ExportEpubAsync" disabled="@(!_hasDocument)" title="Write an ePub next to the source file">
+                ePub
+            </button>
+        }
     </div>
 
     @* ── Status line ─────────────────────────────────────────────────────── *@
@@ -77,10 +111,27 @@
                       @onkeydown="OnSourceKeyDown"></textarea>
         }
 
+        @if (_epub is { } toc && _tocOpen)
+        {
+            <nav class="toc no-print">
+                <div class="toc-head">Contents</div>
+                <ol>
+                    @foreach (var entry in toc.Contents)
+                    {
+                        <li class="depth-@Math.Min(entry.Depth, 3) @(entry.ChapterIndex == _chapter ? "cur" : "")">
+                            <button @onclick="() => GoToChapterAsync(entry.ChapterIndex, entry.Fragment)">
+                                @entry.Title
+                            </button>
+                        </li>
+                    }
+                </ol>
+            </nav>
+        }
+
         <div class="doc-pane">
             @if (_hasDocument)
             {
-                <article class="doc-render">
+                <article class="doc-render @(_epub is null ? "" : "book")">
                     @((MarkupString)_html)
                 </article>
             }
@@ -88,7 +139,10 @@
             {
                 <div class="empty no-print">
                     <h1>Markdown Viewer</h1>
-                    <p>Open a <code>.md</code> file, or make this app the default handler and just double-click one.</p>
+                    <p>
+                        Open a <code>.md</code> file or an <code>.epub</code> book, or make this app
+                        the default handler and just double-click one.
+                    </p>
                     <button class="tb primary" @onclick="OpenAsync">Open a file…</button>
                 </div>
             }
@@ -103,6 +157,16 @@
     private bool _editing;
     private bool _dirty;
 
+    // ── ePub state. Null in markdown mode, which is what every "is this a book?"
+    // check in the markup keys off. ──────────────────────────────────────────
+    private EpubDocument? _epub;
+    private int _chapter;
+    private bool _tocOpen = true;
+
+    private DotNetObjectReference<Viewer>? _selfRef;
+    private string? _revealFragment;
+    private bool _revealPending;
+
     private string? _status;
     private string? _statusPath;
     private bool _statusIsError;
@@ -111,15 +175,18 @@
     // preview lags the caret by a beat instead.
     private CancellationTokenSource? _previewDebounce;
 
-    private bool _hasDocument => _html.Length > 0;
+    private bool _hasDocument => _html.Length > 0 || _epub is not null;
 
-    private string DisplayName => _file.Path.Length > 0
-        ? Path.GetFileName(_file.Path)
-        : (_hasDocument ? "Untitled" : "No file open");
+    private string DisplayName => _epub is { } book
+        ? book.Title
+        : _file.Path.Length > 0
+            ? Path.GetFileName(_file.Path)
+            : (_hasDocument ? "Untitled" : "No file open");
 
     /// <summary>Title used for the ePub/Word exports and their filenames.</summary>
     private string DocumentTitle =>
-        MarkdownRenderer.LeadingTitle(_source)
+        _epub?.Title
+        ?? MarkdownRenderer.LeadingTitle(_source)
         ?? (_file.Path.Length > 0 ? Path.GetFileNameWithoutExtension(_file.Path) : "Untitled");
 
     /// <summary>True when the markdown already opens with its own H1.</summary>
@@ -132,13 +199,33 @@
             await LoadAsync(path);
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("mdvEpub.attach", _selfRef);
+        }
+
+        // Scrolling has to wait until the new chapter is actually in the DOM.
+        if (_revealPending)
+        {
+            _revealPending = false;
+            var fragment = _revealFragment;
+            _revealFragment = null;
+            await JS.InvokeVoidAsync("mdvEpub.reveal", fragment);
+        }
+    }
+
+    public void Dispose() => _selfRef?.Dispose();
+
     // ── File operations ──────────────────────────────────────────────────────
 
     private async Task OpenAsync()
     {
         try
         {
-            if (await Dialogs.PickMarkdownAsync() is { Length: > 0 } path)
+            if (await Dialogs.PickDocumentAsync() is { Length: > 0 } path)
                 await LoadAsync(path);
         }
         catch (Exception ex)
@@ -149,9 +236,16 @@
 
     private async Task LoadAsync(string path)
     {
+        if (Path.GetExtension(path).Equals(".epub", StringComparison.OrdinalIgnoreCase))
+        {
+            await LoadEpubAsync(path);
+            return;
+        }
+
         try
         {
             _file = await MarkdownFile.LoadAsync(path);
+            _epub = null;
             _source = _file.Text;
             _html = MarkdownRenderer.ToHtmlString(_source);
             _dirty = false;
@@ -160,6 +254,35 @@
         }
         catch (Exception ex)
         {
+            Error($"Couldn't read {Path.GetFileName(path)}: {ex.Message}");
+        }
+    }
+
+    private async Task LoadEpubAsync(string path)
+    {
+        try
+        {
+            var book = await EpubDocument.LoadAsync(path);
+
+            _epub = book;
+            _chapter = 0;
+            _tocOpen = book.Contents.Count > 1;
+            _html = await book.ChapterHtmlAsync(0);
+
+            // Editing is meaningless for a book, and the exports still want to land
+            // beside it — which is all ExportPaths needs the path for.
+            _editing = false;
+            _dirty = false;
+            _source = string.Empty;
+            _file = MarkdownFile.Untitled().At(path);
+
+            _revealFragment = null;
+            _revealPending = true;
+            ClearStatus();
+        }
+        catch (Exception ex)
+        {
+            _epub = null;
             Error($"Couldn't read {Path.GetFileName(path)}: {ex.Message}");
         }
     }
@@ -199,6 +322,61 @@
         catch (Exception ex)
         {
             Error($"Couldn't save: {ex.Message}");
+        }
+    }
+
+    // ── Reading an ePub ──────────────────────────────────────────────────────
+
+    private async Task GoToChapterAsync(int index, string? fragment = null)
+    {
+        if (_epub is not { } book) return;
+        if (index < 0 || index >= book.Chapters.Count) return;
+
+        try
+        {
+            _html = await book.ChapterHtmlAsync(index);
+            _chapter = index;
+            _revealFragment = fragment;
+            _revealPending = true;
+            ClearStatus();
+        }
+        catch (Exception ex)
+        {
+            Error($"Couldn't read that chapter: {ex.Message}");
+        }
+    }
+
+    /// <summary>Called from wwwroot/epub.js for a link into another chapter.</summary>
+    [JSInvokable]
+    public Task EpubLinkClicked(int chapter, string fragment) =>
+        InvokeAsync(async () =>
+        {
+            await GoToChapterAsync(chapter, fragment.Length == 0 ? null : fragment);
+            StateHasChanged();
+        });
+
+    /// <summary>
+    /// Called from wwwroot/epub.js for a link out to the web. The scheme is checked
+    /// again here rather than trusted from the DOM: this ends in a shell launch, and
+    /// the URL came out of a file the app did not write.
+    /// </summary>
+    [JSInvokable]
+    public async Task EpubExternalClicked(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return;
+        if (uri.Scheme is not ("http" or "https")) return;
+
+        try
+        {
+            await Launcher.Default.OpenAsync(uri);
+        }
+        catch (Exception ex)
+        {
+            await InvokeAsync(() =>
+            {
+                Error($"Couldn't open that link: {ex.Message}");
+                StateHasChanged();
+            });
         }
     }
 

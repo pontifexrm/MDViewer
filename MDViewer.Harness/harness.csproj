@@ -21,6 +21,8 @@
     <!-- The real service files from the app, not copies -->
     <Compile Include="..\MDViewer\Services\MarkdownRenderer.cs" />
     <Compile Include="..\MDViewer\Services\EpubGenerator.cs" />
+    <Compile Include="..\MDViewer\Services\EpubDocument.cs" />
+    <Compile Include="..\MDViewer\Services\EpubHtml.cs" />
     <Compile Include="..\MDViewer\Services\WordExporter.cs" />
     <Compile Include="..\MDViewer\Services\ExportPaths.cs" />
     <Compile Include="..\MDViewer\Services\MarkdownFile.cs" />

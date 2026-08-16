@@ -17,10 +17,10 @@ public sealed class WindowsFileDialogs : IFileDialogs
 		return platformWindow is null ? IntPtr.Zero : WinRT.Interop.WindowNative.GetWindowHandle(platformWindow);
 	}
 
-	public async Task<string?> PickMarkdownAsync()
+	public async Task<string?> PickDocumentAsync()
 	{
 		var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
-		foreach (var ext in new[] { ".md", ".markdown", ".mdown", ".mkd", ".mdtext", ".txt" })
+		foreach (var ext in new[] { ".md", ".markdown", ".mdown", ".mkd", ".mdtext", ".txt", ".epub" })
 			picker.FileTypeFilter.Add(ext);
 
 		WinRT.Interop.InitializeWithWindow.Initialize(picker, WindowHandle());

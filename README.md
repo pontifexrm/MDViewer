@@ -4,7 +4,8 @@
 [![Licence](https://img.shields.io/github/license/pontifexrm/MDViewer?color=2B579A)](LICENSE)
 
 A Windows desktop viewer for `.md` files — double-click a markdown file and read it
-rendered, with print, PDF, Word and ePub output. .NET MAUI Blazor Hybrid (WebView2).
+rendered, with print, PDF, Word and ePub output. It also reads `.epub` books.
+.NET MAUI Blazor Hybrid (WebView2).
 
 ### ⬇ [Download the latest release](https://github.com/pontifexrm/MDViewer/releases/latest)
 
@@ -22,13 +23,14 @@ that knowledge base's own ePub generator.
 
 | Action | Notes |
 |---|---|
-| Open | File picker, or launch with a `.md` (file association / command line) |
+| Open | File picker, or launch with a `.md` or `.epub` (file association / command line) |
 | Edit | Split pane: markdown source left, live preview right |
 | Save / Save As | Writes the markdown source back **losslessly** — BOM and CRLF preserved |
 | Print | WebView2 print preview (its "Save as PDF" destination works too) |
 | PDF | `CoreWebView2.PrintToPdfAsync` — no PDF library involved |
 | Word | HTML wrapped in the Office document header; opens straight into Word |
-| ePub | Valid ePub 3; Kindle (2022+), Kobo, Apple Books |
+| ePub out | Valid ePub 3; Kindle (2022+), Kobo, Apple Books |
+| ePub in | Opens `.epub` for reading — contents sidebar, chapter by chapter |
 
 Exports are written **beside the source file** with the same base name, never
 overwriting — an existing name gets ` (2)`. If the document was never saved, they
@@ -47,6 +49,45 @@ WebView with .NET interop is not a risk worth taking for the formatting.
 
 Each `.md` opens its own window (the Notepad/Word model). There is no
 single-instance redirection.
+
+## Reading ePub
+
+Opening a `.epub` puts the app in reader mode: a contents sidebar on the left, one
+chapter at a time in the pane, and Prev/Next through the spine. It scrolls — there
+are no page turns and no font controls, because WebView2's own zoom (Ctrl+`+`,
+Ctrl+scroll) already reflows the text and this only ever runs on a desktop.
+Editing and Save are hidden; Print and PDF stay, and act on the current chapter.
+
+`Services/EpubDocument.cs` is `EpubGenerator` run backwards — same container/OPF
+structure — plus the two things the generator never has to handle because it only
+reads back what it wrote: **EPUB 2** (a `toc.ncx` and no nav document, which is
+most books that predate 2015) and hrefs that are percent-encoded, walk upwards, or
+disagree with the ZIP entry on casing.
+
+`Services/EpubHtml.cs` is the part to be careful with. Markdown gets `DisableHtml`
+because script in a WebView with .NET interop is not worth the formatting — but an
+ePub *is* authored HTML, and EPUB 3 permits scripting outright, so that rule cannot
+hold in reader mode. What replaces it is an **allow-list**: elements and attributes
+not named in that file are removed, so anything nobody anticipated fails closed.
+Consequences worth knowing before changing it:
+
+- Links never navigate the WebView. A live `href` would replace the running app
+  with the linked page, so hrefs are stripped and replaced with data attributes
+  that `wwwroot/epub.js` turns into in-app chapter navigation. `http(s)` links go
+  to the default browser (scheme re-checked in .NET before the shell launch, since
+  the URL came out of a stranger's file); every other scheme is dropped.
+- The book's own CSS is dropped entirely — `<style>`, `<link>` and `style=`.
+  Chapters render through the app's `.doc-render` rules, so custom fonts, drop caps
+  and verse indentation are lost. This is a deliberate trade, not an oversight.
+- Remote resources are never fetched: an `<img>` pointing at a web server is a
+  tracking pixel that would report when the file was opened.
+- SVG and MathML are discarded. Cover art survives, because an `<image>` inside an
+  `<svg>` is lifted out to a plain `<img>` first.
+
+Images are inlined as `data:` URIs — the exact inverse of what `EpubGenerator` does
+on the way out — so nothing is unpacked to a temp folder and the WebView needs no
+mapping into the archive. The whole file is held in memory rather than kept open,
+so reading a book does not lock it against being moved or deleted.
 
 ## Layout
 
