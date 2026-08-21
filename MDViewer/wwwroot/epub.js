@@ -72,8 +72,8 @@ window.mdvEpub = {
         return { block: Math.max(0, blocks.length - 1), fraction: 0 };
     },
 
-    // Called after a chapter renders: to the linked element, or back to a
-    // remembered block, or to the top. Scrolls the pane rather than the window,
+    // Called after a chapter or a reloaded document renders: to the linked element,
+    // or back to a remembered block, or to the top. Scrolls the pane rather than the window,
     // since .doc-pane is what actually overflows.
     reveal: function (fragment, block, fraction) {
         var pane = document.querySelector('.doc-pane');

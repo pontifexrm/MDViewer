@@ -105,6 +105,9 @@ html, body {
 
 .status.err { background: #fdeaea; border-bottom-color: #f0c6c6; color: #7a1c1c; }
 
+/* Changed on disk: a prompt, not an outcome, so it reads as neither good nor bad. */
+.status.disk { background: #fdf5e3; border-bottom-color: #ecdcb3; color: #6b5314; }
+
 .status .link {
     font: inherit;
     color: inherit;

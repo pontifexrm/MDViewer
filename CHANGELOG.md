@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.0.6 — 2026-08-21
+
+### Notices when the file changes underneath it
+
+An open `.md` is now polled on a timer, and an edit made by something else — an
+editor, a script, a `git pull` — is picked up without reopening the file.
+
+- In reading view with nothing unsaved, the document reloads on its own and the
+  reader stays where they were. The position is the index of a block plus how far
+  into it, the same measure the ePub reader resumes from, so it still points at the
+  right paragraph when the text above it has grown or shrunk.
+- With unsaved edits, or with the editor open, nothing is taken: a bar offers
+  **Reload** instead. Refreshing a textarea under someone's caret would destroy work
+  the app was trusted with, and there is no version of that worth doing silently.
+  Dismissing the bar keeps it quiet until the next change.
+- Polled rather than watched with a `FileSystemWatcher`. Editors save by writing a
+  temp file and renaming it over the target, which a watcher reports as two or three
+  separate events and sometimes reports before the new contents are there. A change
+  has to be seen on two consecutive ticks before the app acts on it, so a file still
+  being written is never read half-finished, and the read itself retries.
+- The stamp is the last-write time *and* the length — an editor rewriting a file
+  within the same clock tick would otherwise slip past — and the app re-stamps on
+  its own saves, so saving never prompts you to reload what you just wrote.
+- Books are not watched. An `.epub` being rewritten while open is not a thing that
+  happens.
+- 7 new harness checks (94 → 101).
+
 ## 1.0.5 — 2026-08-16
 
 ### Reads ePub

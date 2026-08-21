@@ -87,6 +87,16 @@
         }
     </div>
 
+    @* ── Rewritten underneath us (markdown only; see WatchAsync) ─────────── *@
+    @if (_diskChanged)
+    {
+        <div class="status disk no-print">
+            <span>This file has changed on disk.</span>
+            <button class="link" @onclick="ReloadAsync">Reload</button>
+            <button class="link dismiss" @onclick="DismissDiskChange">&#10005;</button>
+        </div>
+    }
+
     @* ── Status line ─────────────────────────────────────────────────────── *@
     @if (_status is not null)
     {
@@ -163,6 +173,16 @@
     private int _chapter;
     private bool _tocOpen = true;
 
+    // ── Watching the file on disk. Markdown only: a book being rewritten while
+    // it is open is not a thing that happens. ────────────────────────────────
+    private CancellationTokenSource? _watchCts;
+    private bool _diskChanged;
+    private FileStamp? _dismissedStamp;
+
+    /// <summary>How often the open file is stamped. Two ticks are needed to act on a
+    /// change, so an edit surfaces within roughly two of these.</summary>
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1.5);
+
     private DotNetObjectReference<Viewer>? _selfRef;
     private string? _revealFragment;
     private int? _revealBlock;
@@ -223,7 +243,11 @@
         }
     }
 
-    public void Dispose() => _selfRef?.Dispose();
+    public void Dispose()
+    {
+        StopWatching();
+        _selfRef?.Dispose();
+    }
 
     // ── File operations ──────────────────────────────────────────────────────
 
@@ -256,7 +280,10 @@
             _html = MarkdownRenderer.ToHtmlString(_source);
             _dirty = false;
             _editing = false;
+            _diskChanged = false;
+            _dismissedStamp = null;
             ClearStatus();
+            StartWatching();
         }
         catch (Exception ex)
         {
@@ -274,6 +301,10 @@
             // edition since the position was written.
             var resume = ReadingPositions.For(path);
             var start = resume is null ? 0 : Math.Clamp(resume.Chapter, 0, book.Chapters.Count - 1);
+
+            StopWatching();
+            _diskChanged = false;
+            _dismissedStamp = null;
 
             _epub = book;
             _chapter = start;
@@ -334,6 +365,9 @@
             await _file.SaveAsync(_source, path);
             _file = _file.At(path);
             _dirty = false;
+            _diskChanged = false;
+            _dismissedStamp = null;
+            StartWatching();
             Info($"Saved {Path.GetFileName(path)}", path);
         }
         catch (Exception ex)
@@ -341,6 +375,175 @@
             Error($"Couldn't save: {ex.Message}");
         }
     }
+
+    // ── Watching the file on disk ────────────────────────────────────────────
+
+    /// <summary>
+    /// Starts polling the open markdown file, replacing any watch already running.
+    /// Polling rather than a FileSystemWatcher on purpose: editors save by writing a
+    /// temp file and renaming it over the target, which the watcher reports as two or
+    /// three separate events — and sometimes reports before the new contents are
+    /// there. A stamp compared on a timer sidesteps all of that.
+    /// </summary>
+    private void StartWatching()
+    {
+        StopWatching();
+        if (_epub is not null || _file.Path.Length == 0) return;
+
+        var cts = new CancellationTokenSource();
+        _watchCts = cts;
+        _ = WatchAsync(_file.Path, cts.Token);
+    }
+
+    private void StopWatching()
+    {
+        _watchCts?.Cancel();
+        _watchCts?.Dispose();
+        _watchCts = null;
+    }
+
+    private async Task WatchAsync(string path, CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(PollInterval);
+        FileStamp? previous = null;
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                var stamp = FileStamp.Of(path);
+
+                // Null means gone or unreadable mid-write: say nothing and look again.
+                // Acting only on a stamp seen twice running keeps the app from reading
+                // a file a writer is still part-way through.
+                var settled = stamp is not null && stamp == previous;
+                previous = stamp;
+                if (!settled) continue;
+
+                await InvokeAsync(async () =>
+                {
+                    // The document may have been closed or replaced while this tick
+                    // was in flight, in which case the change is no longer ours.
+                    if (token.IsCancellationRequested) return;
+                    if (_epub is not null || _file.Path != path) return;
+                    if (stamp == _file.Stamp || stamp == _dismissedStamp) return;
+
+                    // Unsaved edits, or a caret sitting in the textarea: offer the
+                    // reload rather than taking it. Overwriting either without asking
+                    // would be destroying work the app was trusted with.
+                    if (_dirty || _editing)
+                    {
+                        _diskChanged = true;
+                    }
+                    else
+                    {
+                        // Announced: the document is about to change under the
+                        // reader's eyes, and unexplained movement reads as a bug.
+                        await ReloadFromDiskAsync(announce: true);
+                    }
+
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
+        {
+            // The file was closed, or the window went away with a tick in flight.
+            // Either way there is nothing left to watch.
+        }
+    }
+
+    /// <summary>The Reload button on the changed-on-disk bar.</summary>
+    private async Task ReloadAsync()
+    {
+        _diskChanged = false;
+        await ReloadFromDiskAsync();
+    }
+
+    private void DismissDiskChange()
+    {
+        // Remembered so the same change does not immediately raise the bar again;
+        // a later edit produces a different stamp and does.
+        _dismissedStamp = FileStamp.Of(_file.Path);
+        _diskChanged = false;
+    }
+
+    /// <summary>
+    /// Re-reads the open file and puts the reader back where they were. The position
+    /// is a block index rather than a scroll offset — the same measure the ePub
+    /// reader resumes from — so it still points at the right paragraph even though
+    /// the text above it may have grown or shrunk.
+    /// </summary>
+    private async Task ReloadFromDiskAsync(bool announce = false)
+    {
+        if (_file.Path.Length == 0) return;
+
+        var at = await CurrentPositionAsync();
+
+        try
+        {
+            var reloaded = await ReadWithRetryAsync(_file.Path);
+
+            _file = reloaded;
+            _source = reloaded.Text;
+            _html = MarkdownRenderer.ToHtmlString(_source);
+            _dirty = false;
+            _dismissedStamp = null;
+
+            _revealFragment = null;
+            _revealBlock = at?.Block;
+            _revealFraction = at?.Fraction ?? 0;
+            _revealPending = true;
+
+            if (announce)
+                Info($"Reloaded — {Path.GetFileName(_file.Path)} changed on disk");
+            else
+                ClearStatus();
+        }
+        catch (Exception ex)
+        {
+            // The on-screen document is still the last good one, so this is a notice
+            // rather than a failure: nothing has been lost.
+            Error($"Couldn't reload {Path.GetFileName(_file.Path)}: {ex.Message}");
+            _diskChanged = true;
+        }
+    }
+
+    /// <summary>
+    /// A read that tolerates arriving while a writer still holds the file. The stamp
+    /// has settled by the time this runs, so a lock here is the tail of a slow save
+    /// rather than a lasting condition.
+    /// </summary>
+    private static async Task<MarkdownFile> ReadWithRetryAsync(string path)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await MarkdownFile.LoadAsync(path);
+            }
+            catch (IOException) when (attempt < 3)
+            {
+                await Task.Delay(150);
+            }
+        }
+    }
+
+    private async Task<ScrollPoint?> CurrentPositionAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<ScrollPoint?>("mdvEpub.position");
+        }
+        catch (Exception)
+        {
+            // Losing the scroll position is not a reason to refuse the reload.
+            return null;
+        }
+    }
+
+    /// <summary>What wwwroot/epub.js reports for the top of the viewport.</summary>
+    private sealed record ScrollPoint(int Block, double Fraction);
 
     // ── Reading an ePub ──────────────────────────────────────────────────────
 

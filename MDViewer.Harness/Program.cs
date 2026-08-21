@@ -311,6 +311,38 @@ Check("the most recent books are the ones kept",
     ReadingPositions.For(Path.Combine(posDir, "book239.epub")) is not null);
 
 Console.WriteLine();
+Console.WriteLine("== FileStamp: noticing an outside edit ==");
+
+var watchPath = Path.Combine(outDir, "watched.md");
+await File.WriteAllTextAsync(watchPath, "# One\n\nBody.\n");
+var watched = await MarkdownFile.LoadAsync(watchPath);
+
+Check("a loaded file carries a stamp", watched.Stamp is not null);
+Check("an untouched file looks unchanged", FileStamp.Of(watchPath) == watched.Stamp);
+
+// Something else rewrites it. Same length as well as different, since a stamp on
+// last-write time alone would miss an edit that happened to preserve the size.
+await Task.Delay(20);
+await File.WriteAllTextAsync(watchPath, "# One\n\nBodY.\n");
+Check("an outside edit of the same length is noticed",
+    FileStamp.Of(watchPath) != watched.Stamp);
+
+// The app's own save must not look like someone else's edit, or the viewer would
+// prompt to reload the document the user just wrote.
+var saver = await MarkdownFile.LoadAsync(watchPath);
+await saver.SaveAsync(saver.Text + "\nMore.\n");
+Check("the app's own save re-stamps", FileStamp.Of(watchPath) == saver.Stamp);
+
+// Save As points the stamp at the new file, not the one left behind.
+var savedAsPath = Path.Combine(outDir, "watched-copy.md");
+await saver.SaveAsync(saver.Text, savedAsPath);
+var movedOn = saver.At(savedAsPath);
+Check("Save As stamps the new file", FileStamp.Of(savedAsPath) == movedOn.Stamp);
+
+Check("a missing file has no stamp", FileStamp.Of(Path.Combine(outDir, "not-here.md")) is null);
+Check("an unsaved document has no stamp", MarkdownFile.Untitled().Stamp is null);
+
+Console.WriteLine();
 Console.WriteLine("== ExportPaths ==");
 
 // Resolve "beside the source" against a directory of our own rather than the

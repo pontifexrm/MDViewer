@@ -26,6 +26,7 @@ that knowledge base's own ePub generator.
 | Open | File picker, or launch with a `.md` or `.epub` (file association / command line) |
 | Edit | Split pane: markdown source left, live preview right |
 | Save / Save As | Writes the markdown source back **losslessly** — BOM and CRLF preserved |
+| Reload | An open `.md` rewritten by anything else is picked up automatically |
 | Print | WebView2 print preview (its "Save as PDF" destination works too) |
 | PDF | `CoreWebView2.PrintToPdfAsync` — no PDF library involved |
 | Word | HTML wrapped in the Office document header; opens straight into Word |
@@ -49,6 +50,23 @@ WebView with .NET interop is not a risk worth taking for the formatting.
 
 Each `.md` opens its own window (the Notepad/Word model). There is no
 single-instance redirection.
+
+## Changes made elsewhere
+
+An open `.md` is polled every 1.5s, so an edit from another editor, a script or a
+`git pull` shows up without reopening it. In reading view with nothing unsaved the
+document reloads on its own and the reader stays where they were — the position is
+a block index plus a fraction, the same measure the ePub reader resumes from, so it
+survives the text above it growing or shrinking. With unsaved edits, or with the
+editor pane open, a bar offers **Reload** rather than taking it.
+
+Polling rather than a `FileSystemWatcher` is deliberate: editors save by writing a
+temp file and renaming it over the target, which the watcher reports as several
+events and sometimes reports before the contents are there. A change has to be seen
+on two consecutive ticks before the app acts, so a file still being written is never
+read half-finished. The stamp is last-write time *and* length — a same-tick rewrite
+would otherwise slip past — and the app re-stamps its own saves, so saving never
+prompts a reload of what you just wrote. Books are not watched.
 
 ## Reading ePub
 
