@@ -373,6 +373,102 @@ Check("illegal filename characters stripped",
     !ExportPaths.Sanitize("a/b:c*d?.md").Intersect(Path.GetInvalidFileNameChars()).Any());
 
 Console.WriteLine();
+Console.WriteLine("== HtmlToMarkdown: smart paste ==");
+
+static string Md(string html) => HtmlToMarkdown.Convert(html)?.Markdown ?? "<null>";
+
+// A browser: already-semantic HTML.
+var web = Md("""
+    <h2>Title</h2>
+    <p>Some <strong>bold</strong> and <em>italic</em> with a <a href="https://example.com/a b">link</a>.</p>
+    <ul><li>one</li><li>two<ul><li>nested</li></ul></li></ul>
+    <ol start="3"><li>three</li><li>four</li></ol>
+    """);
+Check("web: heading", web.Contains("## Title"), web);
+Check("web: bold, italic and link inline",
+    web.Contains("Some **bold** and *italic* with a [link](https://example.com/a%20b)."), web);
+Check("web: nested list indented under its item", web.Contains("- one\n- two\n  - nested"), web);
+Check("web: ordered list keeps its start number", web.Contains("3. three\n4. four"), web);
+
+// Word: lists are styled paragraphs with the bullet as literal text, wrapped in
+// conditional comments, with the document's stylesheet in front.
+var word = Md("""
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+    <head><style>p.MsoNormal { margin:0cm; }</style></head>
+    <body lang=EN-NZ>
+    <!--StartFragment-->
+    <h1>Plan<o:p></o:p></h1>
+    <p class=MsoListParagraphCxSpFirst style='text-indent:-18.0pt;mso-list:l0 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]>First <b>point</b><o:p></o:p></p>
+    <p class=MsoListParagraphCxSpMiddle style='mso-list:l0 level2 lfo1'><![if !supportLists]><span style='font-family:"Courier New"'><span style='mso-list:Ignore'>o<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp; </span></span></span><![endif]>Sub point<o:p></o:p></p>
+    <p class=MsoListParagraphCxSpLast style='mso-list:l0 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol'><span style='mso-list:Ignore'>·<span>&nbsp;&nbsp; </span></span></span><![endif]>Second point<o:p></o:p></p>
+    <p class=MsoNormal><o:p>&nbsp;</o:p></p>
+    <p class=MsoListParagraph style='mso-list:l1 level1 lfo2'><![if !supportLists]><span style='mso-list:Ignore'>2.<span>&nbsp;&nbsp; </span></span><![endif]>Numbered<o:p></o:p></p>
+    <table class=MsoTableGrid border=1>
+     <tr><td><p class=MsoNormal><b>Name</b></p></td><td><p class=MsoNormal><b>Qty</b></p></td></tr>
+     <tr><td><p class=MsoNormal>Apples</p></td><td><p class=MsoNormal>3</p></td></tr>
+    </table>
+    <!--EndFragment-->
+    </body></html>
+    """);
+Check("word: heading", word.StartsWith("# Plan\n"), word);
+Check("word: list paragraphs become a nested list",
+    word.Contains("- First **point**\n  - Sub point\n- Second point"), word);
+Check("word: numbered paragraph becomes an ordered list from its number", word.Contains("2. Numbered"), word);
+Check("word: no bullet glyphs, stylesheet or nbsp left behind",
+    !word.Contains('·') && !word.Contains("MsoNormal") && !word.Contains(' '), word);
+Check("word: table header row is not double-bolded", word.Contains("| Name") && !word.Contains("**Name**"), word);
+var wordHtml = MarkdownRenderer.ToHtmlString(word);
+Check("word: output renders as a real nested list",
+    wordHtml.Split("<ul>").Length - 1 == 2 && wordHtml.Contains("<strong>point</strong>"), wordHtml);
+Check("word: output renders as a real table", wordHtml.Contains("<table") && wordHtml.Contains("Apples"));
+
+// Google Docs: the whole copy sits in a <b> whose style says it is not bold, and
+// the real formatting is font-weight on spans.
+var gdocs = Md("""
+    <meta charset="utf-8"><b style="font-weight:normal;" id="docs-internal-guid-1a2b">
+    <h1 dir="ltr"><span style="font-size:20pt;font-weight:400;">Heading</span></h1>
+    <p dir="ltr"><span style="font-weight:400;">Plain then </span><span style="font-weight:700;">bold</span><span style="font-style:italic;font-weight:400;"> italic</span></p>
+    <ul><li dir="ltr"><p dir="ltr"><span style="font-weight:400;">item</span></p></li></ul>
+    </b>
+    """);
+Check("gdocs: heading inside the wrapper", gdocs.Contains("# Heading"), gdocs);
+Check("gdocs: the not-bold wrapper is not bold", !gdocs.Contains("**Plain"), gdocs);
+Check("gdocs: span weights and styles become emphasis", gdocs.Contains("Plain then **bold** *italic*"), gdocs);
+Check("gdocs: list item with a paragraph inside", gdocs.Contains("- item"), gdocs);
+
+var escaped = Md("<p><b>x</b> Use * and _x_ and snake_case and ~5</p><p># not a heading</p><p>1. not a list</p>");
+Check("escaping: markdown characters in text", escaped.Contains(@"Use \* and \_x\_ and snake_case and \~5"), escaped);
+Check("escaping: a line starting like a heading", escaped.Contains(@"\# not a heading"), escaped);
+Check("escaping: a line starting like a numbered item", escaped.Contains(@"1\. not a list"), escaped);
+
+Check("adjacent bold runs merge", Md("<p><b>a</b><b>b</b></p>") == "**ab**", Md("<p><b>a</b><b>b</b></p>"));
+Check("emphasis keeps its spaces outside the markers",
+    Md("<p>a<b> b </b>c</p>") == "a **b** c", Md("<p>a<b> b </b>c</p>"));
+Check("br is a hard line break", Md("<p><b>a</b><br>b</p>") == "**a**\\\nb", Md("<p><b>a</b><br>b</p>"));
+
+var fenced = Md("<pre><code class=\"language-cs\">var x = 1;\nif (a) { }</code></pre>");
+Check("pre becomes a fenced block with its language", fenced == "```cs\nvar x = 1;\nif (a) { }\n```", fenced);
+Check("inline code", Md("<p>run <code>dotnet *run*</code></p>") == "run `dotnet *run*`");
+
+var spans = Md("<table><tr><td>A</td><td>B</td></tr><tr><td colspan=2>a|b</td></tr></table>");
+var spanLines = spans.Split('\n');
+Check("colspan keeps every row the same width", spanLines.Length == 3 && spanLines[2].Count(c => c == '|') == 4, spans);
+Check("pipe in a cell is escaped", spans.Contains(@"a\|b"), spans);
+var layout = Md("<table><tr><td><h2>News</h2><p>body</p></td></tr></table>");
+Check("one-column layout table becomes its content", layout == "## News\n\nbody", layout);
+
+var mail = HtmlToMarkdown.Convert("<p><b>Hi</b></p><img src=\"cid:image001.png\"><img src=\"https://t.example/p.gif\" width=\"1\" height=\"1\">");
+Check("cid: image counted as dropped", mail?.ImagesDropped == 1, $"{mail?.ImagesDropped}");
+Check("tracking pixel left out", mail is not null && !mail.Markdown.Contains("t.example"), mail?.Markdown);
+Check("web image kept", Md("<p><img src=\"https://example.com/a.png\" alt=\"A chart\"></p>") == "![A chart](https://example.com/a.png)");
+Check("javascript: link keeps only its text", Md("<p><b>x</b> <a href=\"javascript:alert(1)\">y</a></p>") == "**x** y");
+
+Check("unstructured HTML defers to the plain text", HtmlToMarkdown.Convert("<div>just <span>text</span></div>") is null);
+Check("VS Code's white-space:pre copy defers to the plain text", HtmlToMarkdown.Convert("""
+    <div style="color: #cccccc;font-family: Consolas;font-weight: normal;white-space: pre;"><div><span style="color: #569cd6;font-weight: bold;"># Heading</span></div><div><span>- </span><span style="font-weight: bold;">item</span></div></div>
+    """) is null);
+
+Console.WriteLine();
 Console.WriteLine($"{pass} passed, {fail} failed");
 Console.WriteLine($"artifacts in {outDir}");
 return fail == 0 ? 0 : 1;

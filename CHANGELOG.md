@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.0.8 — 2026-10-18
+
+### Pasting formatted text becomes markdown
+
+Pasting into the editor from Word, Outlook, Google Docs or a web page now keeps the
+formatting, converted to markdown, instead of dropping it.
+
+- Headings, bold, italic, strikethrough, links, inline code, code blocks, quotes,
+  nested lists and tables. Word's lists, which are styled paragraphs with the bullet
+  as literal text rather than real lists, come out as real nested lists, numbered
+  or not by what the bullet was. Google Docs' bold-is-a-span-style quirk is handled.
+- Output is pure markdown, since the renderer runs with `DisableHtml()`. Underline,
+  colour and merged table cells are flattened; a one-column table or one holding
+  other tables is page layout (email newsletters, signatures) and comes out as its
+  content.
+- Ctrl+Z undoes the whole paste in one step; Ctrl+Shift+V pastes plain text.
+- A copy with no structure, or from a code editor such as VS Code, goes in as the
+  plain text it already was, so pasting markdown source is never escaped.
+- Images are kept only when they point at the web. Email attachments and Word's temp
+  files have nowhere to point and are counted in the status line instead; 1×1
+  tracking pixels are dropped silently.
+- 32 new harness checks (101 → 133).
+
 ## 1.0.6 — 2026-08-21
 
 ### Notices when the file changes underneath it

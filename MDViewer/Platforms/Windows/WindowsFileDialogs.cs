@@ -47,7 +47,16 @@ public sealed class WindowsFileDialogs : IFileDialogs
 
 		// The picker creates a zero-byte placeholder; release its lock so the caller
 		// can write with plain System.IO (this app is full-trust, so that's allowed).
-		await CachedFileManager.CompleteUpdatesAsync(file);
+		// CachedFileManager needs package identity, so an unpackaged dev run
+		// (WindowsPackageType=None) throws here with an empty message. There is no
+		// lock to release in that case, and the write that follows works regardless.
+		try
+		{
+			await CachedFileManager.CompleteUpdatesAsync(file);
+		}
+		catch (Exception)
+		{
+		}
 		return file.Path;
 	}
 }

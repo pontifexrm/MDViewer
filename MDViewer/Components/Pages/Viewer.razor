@@ -227,6 +227,7 @@
         {
             _selfRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("mdvEpub.attach", _selfRef);
+            await JS.InvokeVoidAsync("mdvPaste.attach", _selfRef);
         }
 
         // Scrolling has to wait until the new chapter is actually in the DOM.
@@ -651,6 +652,41 @@
     {
         if (e.CtrlKey && e.Key.Equals("s", StringComparison.OrdinalIgnoreCase))
             await SaveAsync();
+    }
+
+    /// <summary>
+    /// Called from wwwroot/paste.js with the HTML version of what is being pasted.
+    /// Null means "paste the plain text instead" — either there was nothing worth
+    /// converting or the conversion failed, and neither is a reason to lose a paste.
+    /// The text itself goes in from the JS side, as an input event like any other.
+    /// </summary>
+    [JSInvokable]
+    public async Task<string?> ConvertPaste(string html)
+    {
+        PastedMarkdown? pasted;
+        try
+        {
+            pasted = HtmlToMarkdown.Convert(html);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+
+        if (pasted is null) return null;
+
+        await InvokeAsync(() =>
+        {
+            var dropped = pasted.ImagesDropped switch
+            {
+                0 => "",
+                1 => " 1 image was left out.",
+                var n => $" {n} images were left out.",
+            };
+            Info($"Pasted as markdown — Ctrl+Z undoes it, Ctrl+Shift+V pastes plain text.{dropped}");
+            StateHasChanged();
+        });
+        return pasted.Markdown;
     }
 
     // ── Output ───────────────────────────────────────────────────────────────

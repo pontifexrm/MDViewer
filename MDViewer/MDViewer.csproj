@@ -21,10 +21,10 @@
 
         <!-- Versions -->
         <!-- Package version is ApplicationDisplayVersion with ApplicationVersion as the
-             fourth part: 1.0.6 + 0 -> 1.0.6.0. The Microsoft Store reserves that fourth
+             fourth part: 1.0.8 + 0 -> 1.0.8.0. The Microsoft Store reserves that fourth
              part and requires it to be 0 on submission, so the release counter lives in
              ApplicationDisplayVersion. Bump the third digit for each release. -->
-        <ApplicationDisplayVersion>1.0.6</ApplicationDisplayVersion>
+        <ApplicationDisplayVersion>1.0.8</ApplicationDisplayVersion>
         <ApplicationVersion>0</ApplicationVersion>
 
         <!-- Debug F5 deploys share this package identity with the installed release,
@@ -40,8 +40,12 @@
         <!-- Packaged (MSIX). The .md file association in Package.appxmanifest is only
              honoured for a packaged app, so WindowsPackageType is deliberately NOT set
              to None here (unset = packaged).
-             For a quick unpackaged dev run that skips install/cert entirely:
-               dotnet build -t:Run -p:WindowsPackageType=None -->
+             For a quick unpackaged dev run that skips install/cert entirely, and leaves
+             the installed release alone:
+               dotnet build MDViewer -p:WindowsPackageType=None -o MDViewer\bin\Unpackaged
+               MDViewer\bin\Unpackaged\MDViewer.exe
+             It needs its own output folder: built over a packaged Debug build in the
+             default bin folder, it dies at startup with "Class not registered". -->
         <EnableMsixTooling>true</EnableMsixTooling>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
