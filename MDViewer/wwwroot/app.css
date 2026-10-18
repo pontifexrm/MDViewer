@@ -354,7 +354,7 @@ html, body {
     .doc-render {
         max-width: none;
         margin: 0;
-        padding: 0;
+        padding: 15mm;
         border: none;
         border-radius: 0;
         box-shadow: none;
