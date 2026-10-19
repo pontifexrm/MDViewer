@@ -1,4 +1,6 @@
 using Markdig;
+using Markdig.Extensions.TaskLists;
+using Markdig.Syntax;
 using Microsoft.AspNetCore.Components;
 
 namespace MDViewer.Services;
@@ -22,6 +24,37 @@ public static class MarkdownRenderer
     /// <summary>Converts markdown to a MarkupString safe for @((MarkupString)...).</summary>
     public static MarkupString ToHtml(string? markdown) =>
         new(ToHtmlString(markdown));
+
+    /// <summary>
+    /// The task-list checkboxes Markdig renders are disabled, which is right for the
+    /// exports and print but not for reading: there they are a to-do list. This is
+    /// the on-screen HTML with them switched on; clicks are caught in wwwroot/tasks.js.
+    /// </summary>
+    public static string WithClickableTasks(string html) =>
+        html.Replace("<input disabled=\"disabled\" type=\"checkbox\"", "<input type=\"checkbox\"");
+
+    /// <summary>
+    /// The markdown with the index'th task-list item ticked or unticked, counting in
+    /// document order — the same order the checkboxes appear on screen. Only the one
+    /// character inside the brackets changes, so the rest of the file is untouched.
+    /// Null when there is no such task, or it is not in the state the caller saw
+    /// (the page was stale), so a click never flips the wrong box.
+    /// </summary>
+    public static string? ToggleTask(string markdown, int index, bool wasChecked)
+    {
+        if (index < 0) return null;
+
+        var task = Markdown.Parse(markdown, Pipeline)
+            .Descendants<TaskList>()
+            .ElementAtOrDefault(index);
+        if (task is null || task.Checked != wasChecked) return null;
+
+        // The span covers "[ ]" / "[x]"; the mark sits one past its start.
+        var mark = task.Span.Start + 1;
+        if (mark >= markdown.Length || markdown[task.Span.Start] != '[') return null;
+
+        return string.Concat(markdown.AsSpan(0, mark), wasChecked ? " " : "x", markdown.AsSpan(mark + 1));
+    }
 
     /// <summary>
     /// The document's own leading title: the text of a "# Heading" that opens the

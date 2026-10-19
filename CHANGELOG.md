@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.0.9 — 2026-10-19
+
+### Task-list checkboxes can be ticked
+
+A `- [ ]` / `- [x]` item in the reading view is now a working checkbox, so a to-do
+list in a `.md` file can be ticked off without opening the editor.
+
+- In the reading view of a saved file with no unsaved edits, a click writes straight
+  to disk. Only the character inside the brackets changes; BOM and CRLF are kept.
+- While editing, or with unsaved changes, the tick joins that edit and is saved with
+  it, rather than saving the half-finished rest along with it.
+- If the file has been rewritten by something else since it was read, the tick is
+  not saved and the changed-on-disk bar offers the reload instead.
+- A click on a page that no longer matches the source does nothing, so the wrong box
+  is never flipped.
+- Print, PDF, Word and ePub output keep the boxes read-only, and ePub books are
+  unaffected.
+- 10 new harness checks (133 → 143).
+
 ## 1.0.8 — 2026-10-18
 
 ### Pasting formatted text becomes markdown

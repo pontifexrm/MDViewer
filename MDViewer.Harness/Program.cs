@@ -67,6 +67,26 @@ Check("LeadingTitle returns null when body starts with prose",
     MarkdownRenderer.LeadingTitle("Just a paragraph.\n\n# Later heading\n") is null);
 
 Console.WriteLine();
+Console.WriteLine("== Task list toggling ==");
+
+const string tasks = "# Todo\n\n- [ ] one\n- [x] two\n  - [X] nested\n\n1. [ ] numbered\n\nNot a task: [ ] here\n\n```\n- [ ] in code\n```\n";
+Check("first task ticks", MarkdownRenderer.ToggleTask(tasks, 0, false) == tasks.Replace("- [ ] one", "- [x] one"));
+Check("ticked task unticks", MarkdownRenderer.ToggleTask(tasks, 1, true) == tasks.Replace("- [x] two", "- [ ] two"));
+Check("nested capital-X task unticks", MarkdownRenderer.ToggleTask(tasks, 2, true) == tasks.Replace("[X] nested", "[ ] nested"));
+Check("ordered-list task ticks", MarkdownRenderer.ToggleTask(tasks, 3, false) == tasks.Replace("1. [ ]", "1. [x]"));
+Check("brackets outside a list and in code are not tasks", MarkdownRenderer.ToggleTask(tasks, 4, false) is null);
+Check("stale state is refused", MarkdownRenderer.ToggleTask(tasks, 0, true) is null);
+Check("negative index is refused", MarkdownRenderer.ToggleTask(tasks, -1, false) is null);
+
+var taskHtml = MarkdownRenderer.ToHtmlString(tasks);
+var clickable = MarkdownRenderer.WithClickableTasks(taskHtml);
+Check("rendered checkboxes count matches the tasks",
+    System.Text.RegularExpressions.Regex.Matches(taskHtml, "type=\"checkbox\"").Count == 4);
+Check("clickable HTML has no disabled checkboxes", !clickable.Contains("disabled"), clickable);
+Check("clickable HTML keeps the ticked state",
+    System.Text.RegularExpressions.Regex.Matches(clickable, "checked=\"checked\"").Count == 2);
+
+Console.WriteLine();
 Console.WriteLine("== WordExporter ==");
 
 var docBytes = WordExporter.ToDoc("Quarterly Operations Review", html, includeTitleHeading: false);

@@ -26,6 +26,7 @@ that knowledge base's own ePub generator.
 | Open | File picker, or launch with a `.md` or `.epub` (file association / command line) |
 | Edit | Split pane: markdown source left, live preview right |
 | Paste | Formatted text from Word, Outlook, Google Docs or a browser pastes as markdown |
+| Tick tasks | Click a `- [ ]` checkbox while reading to tick it; the file saves itself |
 | Save / Save As | Writes the markdown source back **losslessly** — BOM and CRLF preserved |
 | Reload | An open `.md` rewritten by anything else is picked up automatically |
 | Print | WebView2 print preview (its "Save as PDF" destination works too) |
@@ -154,9 +155,9 @@ self-signed certificate, so Windows will not install it until that certificate i
 trusted — which needs an elevated prompt:
 
 ```powershell
-Import-Certificate -FilePath .\MDViewer_1.0.8.0_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Import-Certificate -FilePath .\MDViewer_1.0.9.0_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 Add-AppxPackage .\Microsoft.WindowsAppRuntime.1.7.msix
-Add-AppxPackage .\MDViewer_1.0.8.0_x64.msix
+Add-AppxPackage .\MDViewer_1.0.9.0_x64.msix
 ```
 
 The runtime is a declared dependency of the package (`Microsoft.WindowsAppRuntime.1.7`)
@@ -176,7 +177,7 @@ dotnet build MDViewer -c Debug            # packaged (MSIX) — needs Developer 
 dotnet build MDViewer -c Debug -p:WindowsPackageType=None   # unpackaged; will NOT run, see below
 ```
 
-Debug builds are versioned `<display>.9999` — currently `1.0.8.9999` — by a
+Debug builds are versioned `<display>.9999` — currently `1.0.9.9999` — by a
 config-conditioned `ApplicationVersion`
 so an F5 deploy sorts *above* the installed release and Visual Studio stops
 prompting to uninstall it on every run. Both configurations still share one package
@@ -231,8 +232,8 @@ Output: `MDViewer/bin/Release/net10.0-windows10.0.19041.0/win-x64/AppPackages/MD
 
 Bump the version for each release via `ApplicationDisplayVersion` in
 `MDViewer/MDViewer.csproj` — the third digit (Windows refuses to install a package
-over an equal or lower version). `1.0.8` + `ApplicationVersion` of `0` gives package
-version `1.0.8.0`.
+over an equal or lower version). `1.0.9` + `ApplicationVersion` of `0` gives package
+version `1.0.9.0`.
 
 The counter is in the *display* version, not `ApplicationVersion`, because the
 Microsoft Store reserves the fourth part of the version and requires it to be `0`
@@ -255,9 +256,9 @@ Then publish, and confirm the version in the `.msix` filename before installing.
 From an **elevated** PowerShell — trusting the certificate needs admin:
 
 ```powershell
-cd "MDViewer\bin\Release\net10.0-windows10.0.19041.0\win-x64\AppPackages\MDViewer_1.0.8.0_Test"
-Import-Certificate -FilePath .\MDViewer_1.0.8.0_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
-Add-AppxPackage .\MDViewer_1.0.8.0_x64.msix
+cd "MDViewer\bin\Release\net10.0-windows10.0.19041.0\win-x64\AppPackages\MDViewer_1.0.9.0_Test"
+Import-Certificate -FilePath .\MDViewer_1.0.9.0_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Add-AppxPackage .\MDViewer_1.0.9.0_x64.msix
 ```
 
 The generated `Install.ps1` in that folder does both and self-elevates.

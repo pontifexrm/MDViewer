@@ -142,7 +142,7 @@
             @if (_hasDocument)
             {
                 <article class="doc-render @(_epub is null ? "" : "book")">
-                    @((MarkupString)_html)
+                    @((MarkupString)(_epub is null ? MarkdownRenderer.WithClickableTasks(_html) : _html))
                 </article>
             }
             else
@@ -228,6 +228,7 @@
             _selfRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("mdvEpub.attach", _selfRef);
             await JS.InvokeVoidAsync("mdvPaste.attach", _selfRef);
+            await JS.InvokeVoidAsync("mdvTasks.attach", _selfRef);
         }
 
         // Scrolling has to wait until the new chapter is actually in the DOM.
@@ -688,6 +689,63 @@
         });
         return pasted.Markdown;
     }
+
+    // ── Task lists ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called from wwwroot/tasks.js when a task-list checkbox is clicked. In the
+    /// reading view of a saved, unedited file the change goes straight to disk — a
+    /// to-do list should not need a Save. With an edit in progress it joins that
+    /// edit instead, since saving now would also save the half-finished rest.
+    /// </summary>
+    [JSInvokable]
+    public Task TaskClicked(int index, bool wasChecked) =>
+        InvokeAsync(async () =>
+        {
+            if (_epub is not null) return;
+
+            if (MarkdownRenderer.ToggleTask(_source, index, wasChecked) is not { } toggled)
+            {
+                // The page and the source disagree; re-rendering puts the box back.
+                StateHasChanged();
+                return;
+            }
+
+            var saveNow = !_dirty && !_editing && _file.Path.Length > 0;
+
+            // Something else has rewritten the file since it was read. Writing now
+            // would quietly throw that away, so it is offered as a reload instead.
+            if (saveNow && FileStamp.Of(_file.Path) != _file.Stamp)
+            {
+                _diskChanged = true;
+                Error("Not saved — this file has changed on disk. Reload, then tick it again.");
+                StateHasChanged();
+                return;
+            }
+
+            _source = toggled;
+            _html = MarkdownRenderer.ToHtmlString(_source);
+
+            if (saveNow)
+            {
+                try
+                {
+                    await _file.SaveAsync(_source);
+                    ClearStatus();
+                }
+                catch (Exception ex)
+                {
+                    _dirty = true;
+                    Error($"Couldn't save: {ex.Message}");
+                }
+            }
+            else
+            {
+                _dirty = _source != _file.Text;
+            }
+
+            StateHasChanged();
+        });
 
     // ── Output ───────────────────────────────────────────────────────────────
 

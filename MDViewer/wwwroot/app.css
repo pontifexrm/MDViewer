@@ -329,6 +329,7 @@ html, body {
 .doc-render img { max-width: 100%; height: auto; }
 
 .doc-render input[type="checkbox"] { margin-right: 0.4em; }
+.doc-render:not(.book) input[type="checkbox"]:not([disabled]) { cursor: pointer; }
 .doc-render ul.contains-task-list { list-style: none; padding-left: 1.1em; }
 
 /* ── Print / PDF ────────────────────────────────────────────────────────────
