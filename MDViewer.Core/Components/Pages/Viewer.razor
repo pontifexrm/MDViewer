@@ -4,6 +4,7 @@
 @implements IDisposable
 @inject IDocumentPrinter Printer
 @inject IFileDialogs Dialogs
+@inject ILinkOpener Links
 @inject IJSRuntime JS
 
 <div class="app-shell @(_editing ? "mode-edit" : "mode-read")">
@@ -234,7 +235,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // The file the app was launched with, parked by Platforms/Windows/App.xaml.cs.
+        // The file the app was launched with, parked by MDViewer/Platforms/Windows/App.xaml.cs.
         if (PendingFile.Take() is { Length: > 0 } path)
             await LoadAsync(path);
     }
@@ -626,7 +627,7 @@
 
         try
         {
-            await Launcher.Default.OpenAsync(uri);
+            await Links.OpenAsync(uri);
         }
         catch (Exception ex)
         {

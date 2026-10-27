@@ -19,15 +19,15 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <!-- The real service files from the app, not copies -->
-    <Compile Include="..\MDViewer\Services\MarkdownRenderer.cs" />
-    <Compile Include="..\MDViewer\Services\EpubGenerator.cs" />
-    <Compile Include="..\MDViewer\Services\EpubDocument.cs" />
-    <Compile Include="..\MDViewer\Services\EpubHtml.cs" />
-    <Compile Include="..\MDViewer\Services\ReadingPositions.cs" />
-    <Compile Include="..\MDViewer\Services\WordExporter.cs" />
-    <Compile Include="..\MDViewer\Services\ExportPaths.cs" />
-    <Compile Include="..\MDViewer\Services\MarkdownFile.cs" />
-    <Compile Include="..\MDViewer\Services\HtmlToMarkdown.cs" />
+    <Compile Include="..\MDViewer.Core\Services\MarkdownRenderer.cs" />
+    <Compile Include="..\MDViewer.Core\Services\EpubGenerator.cs" />
+    <Compile Include="..\MDViewer.Core\Services\EpubDocument.cs" />
+    <Compile Include="..\MDViewer.Core\Services\EpubHtml.cs" />
+    <Compile Include="..\MDViewer.Core\Services\ReadingPositions.cs" />
+    <Compile Include="..\MDViewer.Core\Services\WordExporter.cs" />
+    <Compile Include="..\MDViewer.Core\Services\ExportPaths.cs" />
+    <Compile Include="..\MDViewer.Core\Services\MarkdownFile.cs" />
+    <Compile Include="..\MDViewer.Core\Services\HtmlToMarkdown.cs" />
   </ItemGroup>
 
 </Project>

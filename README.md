@@ -137,10 +137,18 @@ so reading a book does not lock it against being moved or deleted.
 ## Layout
 
 ```
-MDViewer.sln        both projects
-MDViewer/           the MAUI Blazor Hybrid app
-MDViewer.Harness/   test harness — compiles the app's service files directly
+MDViewer.sln        all projects
+MDViewer.Core/      the shared app: Razor UI, services and web assets (net10.0)
+MDViewer/           the Windows host — MAUI Blazor Hybrid, MSIX packaging
+MDViewer.Harness/   test harness — compiles the Core service files directly
 ```
+
+`MDViewer.Core` has no MAUI or Windows dependency. Anything platform-specific —
+file pickers, printing, opening a web link — is an interface in
+`MDViewer.Core/Services` (`IFileDialogs`, `IDocumentPrinter`, `ILinkOpener`) that
+the host registers an implementation for. Core's `wwwroot` is served to the host
+page under `_content/MDViewer.Core/`; only `index.html` stays in the host, since
+it names the host's Blazor script.
 
 Paths in the rest of this README are relative to the repo root unless a `cd` says
 otherwise. Build commands name the project folder rather than the solution,
@@ -291,7 +299,7 @@ Delete both once the workload is fixed upstream.
 ## Tests
 
 `MDViewer.Harness` compiles the real service files (not copies, via relative
-`Compile Include` into `../MDViewer/Services`) and runs 133 checks over markdown
+`Compile Include` into `../MDViewer.Core/Services`) and runs 149 checks over markdown
 rendering, lossless save round-trips, ePub structure, the Word wrapper, export
 path selection and paste conversion.
 

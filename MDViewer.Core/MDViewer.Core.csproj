@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+    <!-- Everything the hosts share: the Razor UI, the services behind it and the
+         web assets it runs on. Plain net10.0 with no MAUI or Windows dependency,
+         so a Linux host can reference it as-is. Platform work (file pickers,
+         printing, opening links) sits behind the interfaces in Services and is
+         supplied by each host. Static assets are served to the host page under
+         _content/MDViewer.Core/. -->
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>MDViewer</RootNamespace>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
+
+        <!-- Same versions as our internal knowledge base, so rendering and ePub
+             output behave identically -->
+        <PackageReference Include="Markdig" Version="1.3.2" />
+        <PackageReference Include="AngleSharp" Version="1.5.2" />
+    </ItemGroup>
+
+</Project>

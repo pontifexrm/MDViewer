@@ -16,6 +16,7 @@ public static class MauiProgram
 			});
 
 		builder.Services.AddMauiBlazorWebView();
+		builder.Services.AddSingleton<ILinkOpener, MauiLinkOpener>();
 
 #if WINDOWS
 		// Singleton: MainPage hands the live CoreWebView2 to the same instance the

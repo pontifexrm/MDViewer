@@ -6,6 +6,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MDViewer", "MDViewer\MDView
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MDViewer.Harness", "MDViewer.Harness\harness.csproj", "{C1C4B902-3DBF-422E-9734-89CA181363B4}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MDViewer.Core", "MDViewer.Core\MDViewer.Core.csproj", "{C1E2260D-0B19-4C75-A8DC-0DB5B62A4C9D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -22,6 +24,10 @@ Global
 		{C1C4B902-3DBF-422E-9734-89CA181363B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C1C4B902-3DBF-422E-9734-89CA181363B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C1C4B902-3DBF-422E-9734-89CA181363B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1E2260D-0B19-4C75-A8DC-0DB5B62A4C9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1E2260D-0B19-4C75-A8DC-0DB5B62A4C9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1E2260D-0B19-4C75-A8DC-0DB5B62A4C9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1E2260D-0B19-4C75-A8DC-0DB5B62A4C9D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
