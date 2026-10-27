@@ -1,5 +1,6 @@
 using Markdig;
 using Markdig.Extensions.TaskLists;
+using Markdig.Renderers.Html;
 using Markdig.Syntax;
 using Microsoft.AspNetCore.Components;
 
@@ -32,6 +33,20 @@ public static class MarkdownRenderer
     /// </summary>
     public static string WithClickableTasks(string html) =>
         html.Replace("<input disabled=\"disabled\" type=\"checkbox\"", "<input type=\"checkbox\"");
+
+    /// <summary>
+    /// The HTML the viewer shows: as <see cref="ToHtmlString"/>, but with each block
+    /// tagged data-line="n" (0-based) with the source line it starts on, which is
+    /// what wwwroot/scrollsync.js lines the editor and preview up by, and with the
+    /// task checkboxes clickable. Screen only: the exports keep the plain HTML.
+    /// </summary>
+    public static string ForScreen(string? markdown)
+    {
+        var document = Markdown.Parse(markdown ?? string.Empty, Pipeline);
+        foreach (var block in document.Descendants<Block>())
+            block.GetAttributes().AddPropertyIfNotExist("data-line", block.Line.ToString());
+        return WithClickableTasks(document.ToHtml(Pipeline));
+    }
 
     /// <summary>
     /// The markdown with the index'th task-list item ticked or unticked, counting in

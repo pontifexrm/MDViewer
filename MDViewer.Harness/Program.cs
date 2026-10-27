@@ -86,6 +86,14 @@ Check("clickable HTML has no disabled checkboxes", !clickable.Contains("disabled
 Check("clickable HTML keeps the ticked state",
     System.Text.RegularExpressions.Regex.Matches(clickable, "checked=\"checked\"").Count == 2);
 
+var screen = MarkdownRenderer.ForScreen("# Head\n\nPara one\nstill one\n\n- item\n\n```\ncode\n```\n");
+Check("screen HTML tags the heading with line 0", screen.Contains("<h1 id=\"head\" data-line=\"0\">"), screen);
+Check("screen HTML tags a paragraph with its first line", screen.Contains("<p data-line=\"2\">"), screen);
+Check("screen HTML tags list items", screen.Contains("<li data-line=\"5\">"), screen);
+Check("screen HTML tags code blocks", screen.Contains("<pre><code data-line=\"7\">"), screen);
+Check("screen HTML has clickable tasks", !MarkdownRenderer.ForScreen(tasks).Contains("disabled"));
+Check("export HTML carries no line tags", !html.Contains("data-line"));
+
 Console.WriteLine();
 Console.WriteLine("== WordExporter ==");
 

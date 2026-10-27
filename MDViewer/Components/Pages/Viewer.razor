@@ -142,7 +142,7 @@
             @if (_hasDocument)
             {
                 <article class="doc-render @(_epub is null ? "" : "book")">
-                    @((MarkupString)(_epub is null ? MarkdownRenderer.WithClickableTasks(_html) : _html))
+                    @((MarkupString)(_epub is null ? ScreenHtml : _html))
                 </article>
             }
             else
@@ -198,6 +198,24 @@
     private CancellationTokenSource? _previewDebounce;
 
     private bool _hasDocument => _html.Length > 0 || _epub is not null;
+
+    // The on-screen HTML carries source-line tags the exports must not, so it is a
+    // second render, redone only when _html itself is replaced.
+    private string? _screenFor;
+    private string _screenHtml = string.Empty;
+
+    private string ScreenHtml
+    {
+        get
+        {
+            if (!ReferenceEquals(_screenFor, _html))
+            {
+                _screenFor = _html;
+                _screenHtml = MarkdownRenderer.ForScreen(_source);
+            }
+            return _screenHtml;
+        }
+    }
 
     private string DisplayName => _epub is { } book
         ? book.Title

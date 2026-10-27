@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.10 — 2026-10-27
+
+### Editor and preview scroll together
+
+With the editor open, scrolling either pane brings the other to the same place in
+the document.
+
+- Matched by content, not by percentage: each block in the preview knows the source
+  line it starts on, so the line at the top of the editor and the block at the top
+  of the preview are the same text. Between blocks it moves smoothly, so a long
+  paragraph or code block does not jump.
+- Opening the editor starts it where you were reading, not at the top.
+- While typing, the preview follows the editor as it re-renders.
+- Print, PDF, Word and ePub output are unchanged, and ePub books are unaffected.
+- 6 new harness checks (143 → 149).
+
 ## 1.0.9 — 2026-10-19
 
 ### Task-list checkboxes can be ticked
