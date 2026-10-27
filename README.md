@@ -3,16 +3,21 @@
 [![Latest release](https://img.shields.io/github/v/release/pontifexrm/MDViewer?label=download&color=2B579A)](https://github.com/pontifexrm/MDViewer/releases/latest)
 [![Licence](https://img.shields.io/github/license/pontifexrm/MDViewer?color=2B579A)](LICENSE)
 
-A Windows desktop viewer for `.md` files — double-click a markdown file and read it
-rendered, with print, PDF, Word and ePub output. It also reads `.epub` books.
-.NET MAUI Blazor Hybrid (WebView2).
+A desktop viewer for `.md` files on Windows and Linux — double-click a markdown file
+and read it rendered, with print, PDF, Word and ePub output. It also reads `.epub`
+books. One Blazor app, hosted by .NET MAUI (WebView2) on Windows and by Photino
+(WebKitGTK) on Linux.
 
 ### ⬇ [Download the latest release](https://github.com/pontifexrm/MDViewer/releases/latest)
 
-Windows 10 1809 (build 17763) or later, x64. The package is signed with a
+**Windows** 10 1809 (build 17763) or later, x64. The package is signed with a
 self-signed certificate, so its certificate has to be trusted before Windows will
 install it — three commands from an elevated prompt, see
 [Install a release](#install-a-release).
+
+**Linux** — Mint 21+, Ubuntu 22.04+ or Debian 12+, x64: download the `.deb` and
+`sudo apt install ./mdviewer_<version>_amd64.deb`. No .NET install needed; see
+[Package and install (.deb)](#package-and-install-deb).
 
 The rendering pipeline is the same one our internal knowledge base uses
 (Markdig, `UseAdvancedExtensions().DisableHtml()`), so a file looks here exactly as
