@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Markdown Viewer
+GenericName=Markdown Viewer
+Comment=Read and edit Markdown, read ePub books, export to PDF, Word and ePub
+Exec=mdviewer %f
+Icon=nz.pontifex.mdviewer
+Terminal=false
+Categories=Office;Viewer;
+Keywords=markdown;md;epub;ebook;reader;editor;
+MimeType=text/markdown;text/x-markdown;application/epub+zip;
+StartupWMClass=nz.pontifex.mdviewer

@@ -313,6 +313,33 @@ latter for notifications this app never sends, but will not start without it).
 Ubuntu 22.04+ and Linux Mint 21+ have both. WSLg on Windows 11 runs it as an
 ordinary window, which is the quickest way to try a change.
 
+### Package and install (.deb)
+
+```bash
+MDViewer.Linux/packaging/build-deb.sh            # or: build-deb.sh arm64
+# from WSL with only the Windows SDK:
+DOTNET="/mnt/c/Program Files/dotnet/dotnet.exe" MDViewer.Linux/packaging/build-deb.sh
+```
+
+Output: `MDViewer.Linux/bin/mdviewer_<ver>_amd64.deb`, versioned from
+`ApplicationDisplayVersion` in `MDViewer/MDViewer.csproj` so both platforms share
+one release number. It is self-contained (its own .NET runtime, ~27 MB) and
+depends only on `libwebkit2gtk-4.1-0` and `libnotify4`. Install with:
+
+```bash
+sudo apt install ./mdviewer_1.0.10_amd64.deb
+```
+
+`apt` (not `dpkg -i`) pulls in the dependencies. The app lands in
+`/usr/lib/mdviewer`, with `mdviewer` on the PATH and a *Markdown Viewer* launcher
+in the menu. It registers for `.md` and `.epub`; to make it the default, use
+*Open With → Other Application → Markdown Viewer* and tick *Remember*, once per
+type. The desktop file, icon and window all use the id `nz.pontifex.mdviewer`
+— the window gets it from `g_set_prgname` in `Program.cs`, which is what lets the
+panel match the running window to its launcher.
+
+### How it works
+
 The platform services are in the project root: `LinuxFileDialogs` (GTK file
 choosers), `WebKitDocumentPrinter` (WebKit's print operation; PDF export prints to
 GTK's *Print to File* printer, the same way the print dialog's PDF option does) and

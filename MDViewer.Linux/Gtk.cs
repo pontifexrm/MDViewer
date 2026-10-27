@@ -52,6 +52,9 @@ internal static partial class Gtk
 
     // ── GLib / GObject ───────────────────────────────────────────────────────
 
+    [LibraryImport(LibGLib, StringMarshalling = StringMarshalling.Utf8)]
+    public static partial void g_set_prgname(string name);
+
     [LibraryImport(LibGLib)] public static partial void g_list_free(IntPtr list);
     [LibraryImport(LibGLib)] public static partial void g_free(IntPtr mem);
     [LibraryImport(LibGObject)] public static partial void g_object_unref(IntPtr obj);
