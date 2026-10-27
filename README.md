@@ -140,6 +140,7 @@ so reading a book does not lock it against being moved or deleted.
 MDViewer.sln        all projects
 MDViewer.Core/      the shared app: Razor UI, services and web assets (net10.0)
 MDViewer/           the Windows host — MAUI Blazor Hybrid, MSIX packaging
+MDViewer.Linux/     the Linux host — Photino (GTK + WebKitGTK)
 MDViewer.Harness/   test harness — compiles the Core service files directly
 ```
 
@@ -295,6 +296,39 @@ because BlazorWebView has no `index.html` to serve. Confirmed against a pristine
 `MDViewer/MDViewer.csproj` carries two targets that work around it —
 `CopyMauiAssetsToOutput` (build) and `CopyMauiAssetsToPublish` (MSIX payload).
 Delete both once the workload is fixed upstream.
+
+## Linux
+
+`MDViewer.Linux` runs the same Core UI in a [Photino](https://www.tryphotino.io/)
+window — GTK 3 with WebKitGTK as the WebView. It is a plain console project, so it
+builds anywhere .NET does; the Windows SDK can publish it for Linux:
+
+```bash
+dotnet publish MDViewer.Linux -c Release -r linux-x64 --self-contained -o MDViewer.Linux/bin/linux-x64
+MDViewer.Linux/bin/linux-x64/mdviewer some.md
+```
+
+At run time it needs `libwebkit2gtk-4.1-0` and `libnotify4` (Photino links the
+latter for notifications this app never sends, but will not start without it).
+Ubuntu 22.04+ and Linux Mint 21+ have both. WSLg on Windows 11 runs it as an
+ordinary window, which is the quickest way to try a change.
+
+The platform services are in the project root: `LinuxFileDialogs` (GTK file
+choosers), `WebKitDocumentPrinter` (WebKit's print operation; PDF export prints to
+GTK's *Print to File* printer, the same way the print dialog's PDF option does) and
+`XdgLinkOpener`. Photino wraps none of that, so `Gtk.cs` P/Invokes GTK and WebKit
+directly, finding the WebView as the child of Photino's window.
+
+Two things Photino does not do that the project file does instead:
+
+- **Static assets.** Photino serves only `<output>/wwwroot`, so the project copies
+  Core's `wwwroot` to `_content/MDViewer.Core/` there — and `blazor.webview.js`,
+  which since WebView 10.0 is a static asset of the package rather than embedded
+  in the assembly. Without it the window sits on *Loading…* with
+  `SyntaxError: Unexpected identifier 'is'` in WebKit's console.
+- **Icon.** The window icon is `mdviewer.png`, rendered from `mdviewer.svg` (the
+  Windows icon's two layers composited); GTK reads SVG only through an optional
+  pixbuf loader. Re-render the PNG if the artwork changes.
 
 ## Tests
 

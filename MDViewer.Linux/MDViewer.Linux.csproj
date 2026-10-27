@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- The Linux host: a Photino window (GTK + WebKitGTK) around the same Razor UI
+         the Windows app runs. Needs libwebkit2gtk-4.1-0 at run time — Ubuntu 22.04+
+         and Linux Mint 21+ have it.
+
+         Plain Microsoft.NET.Sdk, not the Razor SDK, on purpose: Photino serves files
+         straight from <output>/wwwroot, so Core's assets are copied there below. The
+         Razor SDK would only write a dev-time manifest that Photino never reads, and
+         at publish its own copy would collide with this one. The same goes for the
+         WebView package's own script, below. -->
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>MDViewer.Linux</RootNamespace>
+        <AssemblyName>mdviewer</AssemblyName>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Photino.Blazor" Version="4.0.13" />
+        <!-- Photino.Blazor ships for net9 and would pull the 9.0 WebView; keep it in
+             step with the 10.0 components Core is built against. GeneratePathProperty
+             is for its blazor.webview.js, copied below. -->
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebView" Version="10.0.0" GeneratePathProperty="true" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\MDViewer.Core\MDViewer.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+        <Content Include="..\MDViewer.Core\wwwroot\**"
+                 Link="wwwroot\_content\MDViewer.Core\%(RecursiveDir)%(Filename)%(Extension)"
+                 CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+        <!-- Up to 9.0 the WebView embedded blazor.webview.js and served it itself,
+             which is what Photino.Blazor was written against. From 10.0 it is a
+             static web asset of the package, so it has to be put where Photino looks. -->
+        <Content Include="$(PkgMicrosoft_AspNetCore_Components_WebView)\staticwebassets\*"
+                 Link="wwwroot\_framework\%(Filename)%(Extension)"
+                 CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+        <!-- The window icon. A PNG rendered from mdviewer.svg, not the SVG itself:
+             GTK only reads SVG through an optional pixbuf loader, which is not
+             always there. Re-render it if the artwork changes. -->
+        <Content Include="mdviewer.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+
+</Project>

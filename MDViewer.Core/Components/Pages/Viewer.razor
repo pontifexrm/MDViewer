@@ -235,7 +235,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // The file the app was launched with, parked by MDViewer/Platforms/Windows/App.xaml.cs.
+        // The file the app was launched with, parked by the host before the UI starts.
         if (PendingFile.Take() is { Length: > 0 } path)
             await LoadAsync(path);
     }
@@ -784,7 +784,7 @@
             if (await Printer.PrintToPdfAsync(target))
                 Info($"PDF written to {Path.GetFileName(target)}", target);
             else
-                Error("WebView2 declined to produce the PDF.");
+                Error("The print engine declined to produce the PDF.");
         }
         catch (Exception ex)
         {

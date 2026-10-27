@@ -3,7 +3,8 @@ namespace MDViewer.Services;
 /// <summary>
 /// Printing and PDF, backed by the WebView the app already renders into.
 /// On Windows this is WebView2's own print engine (see
-/// MDViewer/Platforms/Windows/WebView2DocumentPrinter.cs) — no PDF library involved.
+/// MDViewer/Platforms/Windows/WebView2DocumentPrinter.cs), on Linux WebKitGTK's (see
+/// MDViewer.Linux/WebKitDocumentPrinter.cs) — no PDF library involved.
 /// </summary>
 public interface IDocumentPrinter
 {

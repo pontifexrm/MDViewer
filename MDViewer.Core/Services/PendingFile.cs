@@ -1,8 +1,9 @@
 namespace MDViewer.Services;
 
 /// <summary>
-/// Hand-off point for the file the app was launched with. Windows activation is
-/// read in MDViewer/Platforms/Windows/App.xaml.cs, which runs before the MAUI DI container
+/// Hand-off point for the file the app was launched with. The host reads it at
+/// startup (Windows activation in MDViewer/Platforms/Windows/App.xaml.cs, argv in
+/// MDViewer.Linux/Program.cs), which runs before the DI container
 /// exists — so the path parks here as a static and the Viewer component collects
 /// it on first render.
 /// </summary>

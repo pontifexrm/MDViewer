@@ -93,6 +93,6 @@ public sealed class MarkdownFile
     /// <summary>A copy of this file's conventions, pointed at a new path (Save As).</summary>
     public MarkdownFile At(string newPath) => new(newPath, Text, _hadBom, _crlf, FileStamp.Of(newPath));
 
-    /// <summary>A brand-new unsaved document, using Windows-native conventions.</summary>
-    public static MarkdownFile Untitled() => new(string.Empty, string.Empty, hadBom: false, crlf: true, stamp: null);
+    /// <summary>A brand-new unsaved document, using the platform's native line endings.</summary>
+    public static MarkdownFile Untitled() => new(string.Empty, string.Empty, hadBom: false, crlf: OperatingSystem.IsWindows(), stamp: null);
 }

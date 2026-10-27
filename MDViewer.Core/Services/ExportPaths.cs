@@ -37,8 +37,16 @@ public static class ExportPaths
         return candidate;
     }
 
-    public static string DocumentsFolder() =>
-        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+    /// <summary>
+    /// Documents, or home if there isn't one: Windows always has it, but a Linux
+    /// account need not (a bare WSL or server install), and .NET names the folder
+    /// whether or not it exists.
+    /// </summary>
+    public static string DocumentsFolder()
+    {
+        var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        return Directory.Exists(documents) ? documents : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    }
 
     public static string Sanitize(string name)
     {
@@ -46,16 +54,52 @@ public static class ExportPaths
         return cleaned.Length > 120 ? cleaned[..120].Trim() : cleaned;
     }
 
-    /// <summary>Opens Explorer with the file selected. Windows-only, like the rest of this app.</summary>
+    /// <summary>Opens the file manager with the file selected.</summary>
     public static void Reveal(string path)
     {
         try
         {
-            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+            if (OperatingSystem.IsWindows())
+                Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+            else
+                _ = Task.Run(() => RevealOnLinux(path));
         }
         catch (Exception)
         {
-            // Explorer being unavailable shouldn't take down the export that just succeeded.
+            // The file manager being unavailable shouldn't take down the export that just succeeded.
+        }
+    }
+
+    /// <summary>
+    /// The freedesktop FileManager1 D-Bus call is the only portable way to get the
+    /// file selected rather than just its folder open; Nemo, Nautilus, Dolphin and
+    /// Thunar all answer it. Without one listening, fall back to opening the folder.
+    /// </summary>
+    private static void RevealOnLinux(string path)
+    {
+        try
+        {
+            var show = new ProcessStartInfo("dbus-send")
+            {
+                ArgumentList =
+                {
+                    "--session", "--print-reply", "--dest=org.freedesktop.FileManager1",
+                    "/org/freedesktop/FileManager1", "org.freedesktop.FileManager1.ShowItems",
+                    $"array:string:{new Uri(path).AbsoluteUri}", "string:",
+                },
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            using (var p = Process.Start(show))
+            {
+                if (p is not null && p.WaitForExit(5000) && p.ExitCode == 0) return;
+            }
+
+            if (Path.GetDirectoryName(path) is { Length: > 0 } folder)
+                Process.Start(new ProcessStartInfo("xdg-open") { ArgumentList = { folder } })?.Dispose();
+        }
+        catch (Exception)
+        {
         }
     }
 }
