@@ -31,22 +31,31 @@ window.mdvPaste = {
 
             var data = e.clipboardData;
             var html = data ? data.getData('text/html') : '';
-            var ref = window.__mdvPasteViewer;
-            if (!html || !ref) return;
+            if (!html || !window.__mdvPasteViewer) return;
 
             // Taken now: the conversion is asynchronous, and the default paste has to
             // be cancelled before this handler returns.
-            var text = data.getData('text/plain');
-            var start = box.selectionStart;
-            var end = box.selectionEnd;
             e.preventDefault();
+            window.mdvPaste.into(box, box.selectionStart, box.selectionEnd, html, data.getData('text/plain'));
+        });
+    },
 
-            ref.invokeMethodAsync('ConvertPaste', html).then(function (markdown) {
-                if (markdown === null) insert(box, start, end, text);
-                else insert(box, start, end, spaced(box.value, start, end, markdown));
-            }, function () {
-                insert(box, start, end, text);
-            });
+    // Puts clipboard content into the editor over [start, end): the HTML converted
+    // to markdown when there is any worth converting, the plain text otherwise.
+    // Also used by the editor's right-click Paste (format.js), which reads the
+    // clipboard itself because no paste event comes with a menu click.
+    into: function (box, start, end, html, text) {
+        var ref = window.__mdvPasteViewer;
+        if (!html || !ref) {
+            if (text) insert(box, start, end, text);
+            return;
+        }
+
+        ref.invokeMethodAsync('ConvertPaste', html).then(function (markdown) {
+            if (markdown === null) insert(box, start, end, text);
+            else insert(box, start, end, spaced(box.value, start, end, markdown));
+        }, function () {
+            insert(box, start, end, text);
         });
 
         function insert(box, start, end, text) {

@@ -31,6 +31,7 @@ that knowledge base's own ePub generator.
 | Open | File picker, or launch with a `.md` or `.epub` (file association / command line) |
 | Edit | Split pane: markdown source left, live preview right, scrolled together |
 | Paste | Formatted text from Word, Outlook, Google Docs or a browser pastes as markdown |
+| Format | Right-click in the editor for bold, headings, lists, links, tables and more |
 | Tick tasks | Click a `- [ ]` checkbox while reading to tick it; the file saves itself |
 | Save / Save As | Writes the markdown source back **losslessly** — BOM and CRLF preserved |
 | Reload | An open `.md` rewritten by anything else is picked up automatically |
@@ -50,6 +51,14 @@ Printing and all exports render through the `@media print` rules in
 Editing deliberately edits the **markdown source**, not rich text. Saving is then a
 byte-for-byte write with no HTML→Markdown conversion, which would otherwise quietly
 reformat tables, code fences and footnotes.
+
+Right-clicking in the editor opens a format menu (`wwwroot/format.js`): Cut, Copy
+and Paste, then each markdown format beside the syntax it writes — bold, italic,
+strikethrough, inline code, link, headings 1–3, bulleted, numbered and task lists,
+quote, code block, table and horizontal rule. A format applies to the selection, or
+to the word or line under the caret, and choosing one already there takes it off.
+Each is one Ctrl+Z step. Ctrl+B, Ctrl+I and Ctrl+K do bold, italic and link from the
+keyboard, and Shift+right-click still opens the browser's own menu.
 
 Pasting into the editor converts rather than strips. Word, Outlook, Google Docs and
 browsers all put an HTML version of a copy on the clipboard; headings, bold, italic,
@@ -169,9 +178,9 @@ self-signed certificate, so Windows will not install it until that certificate i
 trusted — which needs an elevated prompt:
 
 ```powershell
-Import-Certificate -FilePath .\MDViewer_1.0.10.0_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Import-Certificate -FilePath .\MDViewer_1.0.11.0_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 Add-AppxPackage .\Microsoft.WindowsAppRuntime.1.7.msix
-Add-AppxPackage .\MDViewer_1.0.10.0_x64.msix
+Add-AppxPackage .\MDViewer_1.0.11.0_x64.msix
 ```
 
 The runtime is a declared dependency of the package (`Microsoft.WindowsAppRuntime.1.7`)
@@ -191,7 +200,7 @@ dotnet build MDViewer -c Debug            # packaged (MSIX) — needs Developer 
 dotnet build MDViewer -c Debug -p:WindowsPackageType=None   # unpackaged; will NOT run, see below
 ```
 
-Debug builds are versioned `<display>.9999` — currently `1.0.10.9999` — by a
+Debug builds are versioned `<display>.9999` — currently `1.0.11.9999` — by a
 config-conditioned `ApplicationVersion`
 so an F5 deploy sorts *above* the installed release and Visual Studio stops
 prompting to uninstall it on every run. Both configurations still share one package
@@ -246,8 +255,8 @@ Output: `MDViewer/bin/Release/net10.0-windows10.0.19041.0/win-x64/AppPackages/MD
 
 Bump the version for each release via `ApplicationDisplayVersion` in
 `MDViewer/MDViewer.csproj` — the third digit (Windows refuses to install a package
-over an equal or lower version). `1.0.10` + `ApplicationVersion` of `0` gives package
-version `1.0.10.0`.
+over an equal or lower version). `1.0.11` + `ApplicationVersion` of `0` gives package
+version `1.0.11.0`.
 
 The counter is in the *display* version, not `ApplicationVersion`, because the
 Microsoft Store reserves the fourth part of the version and requires it to be `0`
@@ -270,9 +279,9 @@ Then publish, and confirm the version in the `.msix` filename before installing.
 From an **elevated** PowerShell — trusting the certificate needs admin:
 
 ```powershell
-cd "MDViewer\bin\Release\net10.0-windows10.0.19041.0\win-x64\AppPackages\MDViewer_1.0.10.0_Test"
-Import-Certificate -FilePath .\MDViewer_1.0.10.0_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
-Add-AppxPackage .\MDViewer_1.0.10.0_x64.msix
+cd "MDViewer\bin\Release\net10.0-windows10.0.19041.0\win-x64\AppPackages\MDViewer_1.0.11.0_Test"
+Import-Certificate -FilePath .\MDViewer_1.0.11.0_x64.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Add-AppxPackage .\MDViewer_1.0.11.0_x64.msix
 ```
 
 The generated `Install.ps1` in that folder does both and self-elevates.
@@ -332,7 +341,7 @@ one release number. It is self-contained (its own .NET runtime, ~27 MB) and
 depends only on `libwebkit2gtk-4.1-0` and `libnotify4`. Install with:
 
 ```bash
-sudo apt install ./mdviewer_1.0.10_amd64.deb
+sudo apt install ./mdviewer_1.0.11_amd64.deb
 ```
 
 `apt` (not `dpkg -i`) pulls in the dependencies. The app lands in

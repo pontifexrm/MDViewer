@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.0.11 — 2026-11-11
+
+### Right-click format menu in the editor
+
+Right-clicking in the editor opens a menu of markdown formats, each shown beside the
+syntax it writes, so plain text can be formatted without remembering the markup.
+
+- Cut, Copy and Paste at the top; Paste still converts formatted text to markdown,
+  as Ctrl+V does.
+- Bold, italic, strikethrough, inline code and link apply to the selection, or to
+  the word under the caret when nothing is selected.
+- Headings 1–3, bulleted, numbered and task lists and quote apply to every line the
+  selection touches.
+- Code block, table and horizontal rule are inserted with a blank line either side,
+  so they never run into the paragraph next to them.
+- Choosing a format that is already there takes it off again. Each change is one
+  Ctrl+Z step.
+- Ctrl+B, Ctrl+I and Ctrl+K do bold, italic and link from the keyboard. The menu
+  works with the arrow keys, Enter and Esc.
+- Shift+right-click opens the browser's own menu.
+- On Windows the app's own pages may read the clipboard, so the menu's Paste works
+  without a permission prompt.
+
 ## 1.0.10 — 2026-10-27
 
 ### Editor and preview scroll together
