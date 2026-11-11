@@ -324,8 +324,11 @@ MDViewer.Linux/bin/linux-x64/mdviewer some.md
 
 At run time it needs `libwebkit2gtk-4.1-0` and `libnotify4` (Photino links the
 latter for notifications this app never sends, but will not start without it).
-Ubuntu 22.04+ and Linux Mint 21+ have both. WSLg on Windows 11 runs it as an
-ordinary window, which is the quickest way to try a change.
+Ubuntu 22.04+ and Linux Mint 21+ have both. The toolbar icons are emoji, so it
+also wants a colour emoji font (`fonts-noto-color-emoji`); without one they show as
+empty boxes. The `.deb` depends on it, but a bare WSL install does not have it.
+WSLg on Windows 11 runs it as an ordinary window, which is the quickest way to try
+a change.
 
 ### Package and install (.deb)
 

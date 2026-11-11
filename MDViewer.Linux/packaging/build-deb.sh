@@ -65,13 +65,17 @@ chmod 755 "$lib/mdviewer"
 # here would mean naming its soname-versioned package for every release.
 # No maintainer scripts either: the desktop database and icon cache are
 # refreshed by dpkg triggers from desktop-file-utils and the icon theme.
+#
+# fonts-noto-color-emoji: the toolbar icons are emoji (Open, Read, Save, Print),
+# which Windows draws with Segoe UI Emoji. Without a colour emoji font they show as
+# empty boxes. Desktop Mint and Ubuntu have it already; minimal installs do not.
 cat > "$root/DEBIAN/control" <<EOF
 Package: mdviewer
 Version: $version
 Architecture: $arch
 Maintainer: Pontifex <ron@pontifex.nz>
 Installed-Size: $(du -sk "$root/usr" | cut -f1)
-Depends: libwebkit2gtk-4.1-0, libnotify4
+Depends: libwebkit2gtk-4.1-0, libnotify4, fonts-noto-color-emoji
 Section: text
 Priority: optional
 Homepage: https://github.com/pontifexrm/MDViewer
